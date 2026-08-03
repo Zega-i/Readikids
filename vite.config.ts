@@ -30,9 +30,11 @@ export default defineConfig({
       workbox: {
         // Precache seluruh aset build → aplikasi 100% berfungsi offline.
         globPatterns: ['**/*.{js,css,html,png,svg,otf,woff2}'],
-        // Panggilan Gemini API tidak boleh dicache — biarkan network-only
-        // (default: URL lintas origin yang tidak terdaftar tidak dicache).
+        // SPA fallback: navigasi halaman dilayani index.html...
         navigateFallback: 'index.html',
+        // ...KECUALI /api/* — itu serverless function (proxy AI), harus tembus
+        // ke server, jangan dilayani cache. Tidak memengaruhi panggilan fetch.
+        navigateFallbackDenylist: [/^\/api/],
       },
     }),
   ],
