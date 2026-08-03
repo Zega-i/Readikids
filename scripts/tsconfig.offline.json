@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": []
+  },
+  "include": [
+    "./stubs/dexie.d.ts",
+    "../src/types/**/*.ts",
+    "../src/telemetry/TelemetryDB.ts",
+    "../src/telemetry/TelemetryLogger.ts",
+    "../src/telemetry/MetricCalculator.ts",
+    "../src/analytics/**/*.ts",
+    "../src/ml/**/*.ts",
+    "../src/utils/**/*.ts"
+  ]
+}

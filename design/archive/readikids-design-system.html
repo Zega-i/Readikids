@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ReadiKids AI — Design System v1.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    /* ══ KID MODE ══ */
+    --kid-bg:#FFF6EC; --kid-surface:#FFFFFF;
+    --kid-ink:#4A3E55; --kid-muted:#7A6B72;
+    --kid-coral:#E4593C; --kid-coral-soft:#FBDDD4;
+    --kid-teal:#2FA890; --kid-teal-soft:#D8F2EC;
+    --kid-sun:#FFC94D;  --kid-sun-soft:#FFF0CE;
+    --kid-lavender:#A78BDB; --kid-lavender-soft:#EEE7FA;
+    --kid-sky:#6EB9E8; --kid-sky-soft:#E1F1FB;
+    /* ══ COMPANION MODE ══ */
+    --c-bg:#F6F9FA; --c-surface:#FFFFFF;
+    --c-ink:#22303B; --c-muted:#5C6B76; --c-border:#E3EAEE;
+    --c-primary:#1F7A6E; --c-primary-soft:#E2F1EE; --c-primary-deep:#155A51;
+    /* ══ KATEGORI INDIKASI (status — non-vonis) ══ */
+    --st-low:#23744A;  --st-low-bg:#E7F5EC;
+    --st-med:#8A5B0B;  --st-med-bg:#FCF1DC;
+    --st-high:#AC432D; --st-high-bg:#FBE9E5;
+    /* ══ CHART (tervalidasi CVD-safe) ══ */
+    --ch-1:#0D9488; --ch-2:#DE6A38; --ch-3:#7A5FC7; --ch-4:#B08514;
+    /* ══ GEOMETRI ══ */
+    --r-kid:24px; --r-comp:12px; --r-chip:999px;
+    --sh-kid:0 6px 0 rgba(74,62,85,.10); --sh-comp:0 1px 3px rgba(34,48,59,.08),0 4px 14px rgba(34,48,59,.06);
+  }
+  *{box-sizing:border-box;margin:0}
+  body{font-family:'Nunito','Segoe UI',system-ui,sans-serif;background:var(--c-bg);color:var(--c-ink);line-height:1.6}
+  .wrap{max-width:1000px;margin:0 auto;padding:48px 24px 96px}
+  h1,h2,h3{font-weight:800;line-height:1.25}
+  h1{font-size:34px} h2{font-size:24px;margin:64px 0 8px;padding-top:24px;border-top:2px solid var(--c-border)}
+  h3{font-size:17px;margin:28px 0 12px;color:var(--c-primary-deep)}
+  p.lead{color:var(--c-muted);max-width:64ch}
+  .tag{display:inline-block;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--c-primary);background:var(--c-primary-soft);padding:3px 12px;border-radius:999px;margin-bottom:14px}
+  .note{font-size:13.5px;color:var(--c-muted);background:var(--c-surface);border:1px solid var(--c-border);border-left:4px solid var(--kid-sun);padding:12px 16px;border-radius:8px;margin:16px 0}
+  /* swatches */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:16px 0}
+  .sw{border-radius:12px;overflow:hidden;border:1px solid var(--c-border);background:var(--c-surface)}
+  .sw .chip{height:64px;display:flex;align-items:flex-end;padding:8px}
+  .sw .meta{padding:8px 10px;font-size:12px}
+  .sw .meta b{display:block;font-size:12.5px}
+  .sw .meta code{color:var(--c-muted);font-size:11.5px}
+  .sw .meta .cr{display:inline-block;margin-top:4px;font-size:10.5px;font-weight:800;background:var(--c-primary-soft);color:var(--c-primary-deep);border-radius:4px;padding:1px 6px}
+  /* panels */
+  .panel{border-radius:16px;padding:28px;margin:16px 0;border:1px solid var(--c-border)}
+  .panel.kid{background:var(--kid-bg)}
+  .panel.comp{background:var(--c-surface);box-shadow:var(--sh-comp)}
+  .row{display:flex;flex-wrap:wrap;gap:16px;align-items:center}
+  /* kid components */
+  .kid *{font-family:'Baloo 2','Comic Sans MS','Segoe UI',sans-serif}
+  .btn-kid{border:0;cursor:pointer;font-family:'Baloo 2','Comic Sans MS','Segoe UI',sans-serif;font-weight:700;font-size:22px;color:#fff;background:var(--kid-coral);padding:14px 34px;border-radius:var(--r-kid);box-shadow:0 5px 0 #C24630;min-height:56px;transition:transform .1s}
+  .btn-kid:active{transform:translateY(4px);box-shadow:0 1px 0 #C24630}
+  .btn-kid.teal{background:var(--kid-teal);box-shadow:0 5px 0 #23806E}
+  .btn-kid.teal:active{box-shadow:0 1px 0 #23806E}
+  .card-kid{background:var(--kid-surface);border-radius:var(--r-kid);box-shadow:var(--sh-kid);padding:22px;width:190px;text-align:center;border:3px solid transparent;cursor:pointer;transition:.15s}
+  .card-kid:hover{border-color:var(--kid-sun);transform:translateY(-3px)}
+  .card-kid .emoji{font-size:44px}
+  .card-kid b{display:block;font-size:19px;color:var(--kid-ink);margin-top:6px}
+  .card-kid span{font-size:14px;color:var(--kid-muted)}
+  .stars{font-size:30px;letter-spacing:6px}
+  .kid-progress{height:18px;background:var(--kid-sun-soft);border-radius:999px;overflow:hidden;width:260px}
+  .kid-progress i{display:block;height:100%;width:60%;background:linear-gradient(90deg,var(--kid-sun),var(--kid-coral));border-radius:999px}
+  /* companion components */
+  .btn-comp{border:0;cursor:pointer;font-family:'Nunito','Segoe UI',system-ui,sans-serif;font-weight:800;font-size:15px;color:#fff;background:var(--c-primary);padding:12px 22px;border-radius:var(--r-comp);min-height:44px}
+  .btn-comp.ghost{background:var(--c-surface);color:var(--c-primary-deep);border:1.5px solid var(--c-primary)}
+  .badge{display:inline-flex;align-items:center;gap:8px;font-weight:800;font-size:13.5px;border-radius:var(--r-chip);padding:7px 16px}
+  .badge svg{flex:none}
+  .b-low{background:var(--st-low-bg);color:var(--st-low)}
+  .b-med{background:var(--st-med-bg);color:var(--st-med)}
+  .b-high{background:var(--st-high-bg);color:var(--st-high)}
+  .card-comp{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--r-comp);box-shadow:var(--sh-comp);padding:22px;max-width:420px}
+  .card-comp h4{font-size:15px;margin-bottom:4px}
+  .card-comp p{font-size:13.5px;color:var(--c-muted)}
+  .input-comp{font-family:'Nunito','Segoe UI',system-ui,sans-serif;font-size:15px;padding:11px 14px;border:1.5px solid var(--c-border);border-radius:var(--r-comp);width:240px;background:var(--c-surface);color:var(--c-ink)}
+  .input-comp:focus{outline:2.5px solid var(--c-primary);outline-offset:1px;border-color:transparent}
+  .disclaimer{display:flex;gap:10px;background:var(--c-primary-soft);border-radius:var(--r-comp);padding:12px 16px;font-size:13px;color:var(--c-primary-deep);max-width:560px}
+  /* typography spec */
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--c-border);vertical-align:top}
+  th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--c-muted)}
+  /* code export */
+  pre{background:#22303B;color:#E8EEF2;font-size:12.5px;line-height:1.55;padding:18px;border-radius:12px;overflow-x:auto;margin:12px 0}
+  .copybar{display:flex;justify-content:space-between;align-items:center;margin-top:20px}
+  .copybtn{font-family:'Nunito';font-weight:800;font-size:12.5px;border:1.5px solid var(--c-primary);color:var(--c-primary-deep);background:#fff;border-radius:8px;padding:6px 14px;cursor:pointer}
+  /* chart */
+  .chart-box{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--r-comp);box-shadow:var(--sh-comp);padding:20px;max-width:560px}
+  .legend{display:flex;gap:18px;font-size:12.5px;color:var(--c-muted);margin-bottom:6px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}
+  .tip{position:fixed;pointer-events:none;background:#22303B;color:#fff;font-size:12px;padding:6px 10px;border-radius:6px;opacity:0;transition:opacity .1s;z-index:9}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <span class="tag">Design System · v1.0 · Gaya: Ceria-Lembut</span>
+  <h1>🎨 ReadiKids AI — Design System</h1>
+  <p class="lead">Satu aplikasi, dua bahasa desain: <b>Kid Mode</b> (hangat, membulat, besar, nyaris tanpa teks) dan <b>Companion Mode</b> (tenang, jelas, kredibel seperti aplikasi kesehatan). Semua token di halaman ini telah lolos uji kontras WCAG dan uji buta warna (CVD) secara programatik.</p>
+
+  <!-- ═════════════ WARNA ═════════════ -->
+  <h2>1 · Warna</h2>
+
+  <h3>Kid Mode — pastel hangat + aksen ceria</h3>
+  <div class="grid">
+    <div class="sw"><div class="chip" style="background:#FFF6EC"></div><div class="meta"><b>kid-bg</b><code>#FFF6EC</code></div></div>
+    <div class="sw"><div class="chip" style="background:#E4593C"></div><div class="meta"><b>kid-coral</b> <code>#E4593C</code><span class="cr">putih 3.6:1 · teks besar ✓</span></div></div>
+    <div class="sw"><div class="chip" style="background:#2FA890"></div><div class="meta"><b>kid-teal</b><code>#2FA890</code></div></div>
+    <div class="sw"><div class="chip" style="background:#FFC94D"></div><div class="meta"><b>kid-sun</b> <code>#FFC94D</code><span class="cr">dekoratif saja</span></div></div>
+    <div class="sw"><div class="chip" style="background:#A78BDB"></div><div class="meta"><b>kid-lavender</b><code>#A78BDB</code></div></div>
+    <div class="sw"><div class="chip" style="background:#6EB9E8"></div><div class="meta"><b>kid-sky</b><code>#6EB9E8</code></div></div>
+    <div class="sw"><div class="chip" style="background:#4A3E55"></div><div class="meta"><b>kid-ink</b> <code>#4A3E55</code><span class="cr">cream 9.3:1 ✓</span></div></div>
+    <div class="sw"><div class="chip" style="background:#7A6B72"></div><div class="meta"><b>kid-muted</b> <code>#7A6B72</code><span class="cr">cream 4.7:1 ✓</span></div></div>
+  </div>
+  <p class="note">Setiap warna aksen punya pasangan <i>soft</i> (mis. <code>kid-coral-soft #FBDDD4</code>, <code>kid-teal-soft #D8F2EC</code>, <code>kid-sun-soft #FFF0CE</code>, <code>kid-lavender-soft #EEE7FA</code>, <code>kid-sky-soft #E1F1FB</code>) untuk latar kartu game & panel — warna kuat hanya untuk tombol/ikon, tidak pernah untuk bidang luas.</p>
+
+  <h3>Companion Mode — tenang &amp; kredibel</h3>
+  <div class="grid">
+    <div class="sw"><div class="chip" style="background:#F6F9FA"></div><div class="meta"><b>c-bg</b><code>#F6F9FA</code></div></div>
+    <div class="sw"><div class="chip" style="background:#1F7A6E"></div><div class="meta"><b>c-primary</b> <code>#1F7A6E</code><span class="cr">putih 5.2:1 ✓</span></div></div>
+    <div class="sw"><div class="chip" style="background:#155A51"></div><div class="meta"><b>c-primary-deep</b><code>#155A51</code></div></div>
+    <div class="sw"><div class="chip" style="background:#E2F1EE"></div><div class="meta"><b>c-primary-soft</b><code>#E2F1EE</code></div></div>
+    <div class="sw"><div class="chip" style="background:#22303B"></div><div class="meta"><b>c-ink</b> <code>#22303B</code><span class="cr">bg 12.8:1 ✓</span></div></div>
+    <div class="sw"><div class="chip" style="background:#5C6B76"></div><div class="meta"><b>c-muted</b> <code>#5C6B76</code><span class="cr">putih 5.5:1 ✓</span></div></div>
+    <div class="sw"><div class="chip" style="background:#E3EAEE"></div><div class="meta"><b>c-border</b><code>#E3EAEE</code></div></div>
+  </div>
+
+  <h3>Kategori Indikasi — status non-vonis (WAJIB ikon + label, tak pernah warna saja)</h3>
+  <div class="row" style="margin:14px 0">
+    <span class="badge b-low"><svg width="14" height="14" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 8.2l2 2 4-4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Pola belajar tampak tipikal</span>
+    <span class="badge b-med"><svg width="14" height="14" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 4.5v4.2M8 11.4v.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Ada pola yang sebaiknya diamati</span>
+    <span class="badge b-high"><svg width="14" height="14" viewBox="0 0 16 16"><path d="M8 2l6.5 11.5H1.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 6.5v3M8 12v.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Disarankan konsultasi profesional</span>
+  </div>
+  <table>
+    <tr><th>Level</th><th>Teks</th><th>Latar chip</th><th>Kontras</th><th>Aturan bahasa</th></tr>
+    <tr><td><b>LOW</b></td><td><code>#23744A</code></td><td><code>#E7F5EC</code></td><td>5.1:1 ✓</td><td>Netral-positif, tanpa kata "aman/normal" mutlak</td></tr>
+    <tr><td><b>MEDIUM</b></td><td><code>#8A5B0B</code></td><td><code>#FCF1DC</code></td><td>5.2:1 ✓</td><td>Ajakan mengamati, bukan peringatan</td></tr>
+    <tr><td><b>HIGH</b></td><td><code>#AC432D</code></td><td><code>#FBE9E5</code></td><td>5.0:1 ✓</td><td>Ajakan konsultasi; <b>bukan merah murni</b>, tanpa nada alarm</td></tr>
+  </table>
+  <p class="note">Warna status <b>dilarang</b> dipakai untuk series chart atau elemen dekoratif — khusus menyatakan kategori indikasi. Kid Mode <b>tidak pernah</b> menampilkan warna status.</p>
+
+  <h3>Chart (Companion Dashboard) — lolos validasi CVD ✓</h3>
+  <div class="row" style="margin:12px 0">
+    <div class="sw" style="width:150px"><div class="chip" style="background:#0D9488"></div><div class="meta"><b>chart-1</b> <code>#0D9488</code><code>Hesitation Index</code></div></div>
+    <div class="sw" style="width:150px"><div class="chip" style="background:#DE6A38"></div><div class="meta"><b>chart-2</b> <code>#DE6A38</code><code>NLEE</code></div></div>
+    <div class="sw" style="width:150px"><div class="chip" style="background:#7A5FC7"></div><div class="meta"><b>chart-3</b> <code>#7A5FC7</code><code>Skor komposit</code></div></div>
+    <div class="sw" style="width:150px"><div class="chip" style="background:#B08514"></div><div class="meta"><b>chart-4</b> <code>#B08514</code><code>cadangan</code></div></div>
+  </div>
+  <p class="note">Urutan hue <b>tetap dan terikat pada metrik</b> (HI selalu teal, NLEE selalu oranye) — filter tidak boleh mengubah warna series yang tersisa. Maks 4 series; lebih dari itu → pecah jadi beberapa chart. Lolos uji: lightness band ✓, chroma ✓, CVD ΔE 10.5 ✓, kontras ≥3:1 ✓.</p>
+
+  <!-- ═════════════ TIPOGRAFI ═════════════ -->
+  <h2>2 · Tipografi</h2>
+  <table>
+    <tr><th>Peran</th><th>Font</th><th>Skala</th><th>Catatan</th></tr>
+    <tr><td><b>Kid Mode</b></td><td style="font-family:'Baloo 2';font-weight:700">Baloo 2 (600–800)</td><td>Judul 28–32 · tombol 20–24 · body 17+</td><td>Membulat & ramah; huruf <i>a</i> satu tingkat (mirip tulisan tangan anak)</td></tr>
+    <tr><td><b>Companion</b></td><td style="font-weight:700">Nunito (400–800)</td><td>H1 24 · H2 18 · body 15 · caption 13</td><td>Masih membulat (jembatan visual dgn Kid Mode) tapi rapi & kredibel</td></tr>
+    <tr><td><b>Aksesibilitas</b></td><td>OpenDyslexic</td><td>opsional, toggle</td><td>Utility <code>font-dyslexic</code> — pilihan pendamping utk stimulus huruf</td></tr>
+  </table>
+  <div class="panel kid">
+    <div style="font-family:'Baloo 2';font-weight:800;font-size:30px;color:var(--kid-ink)">Ayo bermain bersama Kiki! 🦊</div>
+    <div style="font-family:'Baloo 2';font-size:17px;color:var(--kid-muted);margin-top:4px">Contoh judul + teks pengantar di Kid Mode</div>
+  </div>
+
+  <!-- ═════════════ GEOMETRI ═════════════ -->
+  <h2>3 · Geometri, Elevasi &amp; Gerak</h2>
+  <table>
+    <tr><th>Token</th><th>Kid Mode</th><th>Companion</th></tr>
+    <tr><td>Radius</td><td><code>24px</code> (kartu & tombol) · chip <code>999px</code></td><td><code>12px</code> · chip <code>999px</code></td></tr>
+    <tr><td>Target sentuh</td><td><b>min 56px</b> (jari anak)</td><td>min 44px</td></tr>
+    <tr><td>Spacing</td><td colspan="2">Skala basis-4: 4 · 8 · 12 · 16 · 24 · 32 · 48 · 64</td></tr>
+    <tr><td>Bayangan</td><td>"Mainan": <code>0 6px 0</code> ink 10% (tombol terlihat bisa dipencet)</td><td>Lembut 2-lapis (kartu kesehatan modern)</td></tr>
+    <tr><td>Gerak</td><td>Pantulan kecil 100–150ms saat tekan; <b>tanpa animasi selama trial berjalan</b> (jaga validitas telemetri!)</td><td>Fade/slide halus 150–200ms</td></tr>
+  </table>
+
+  <!-- ═════════════ KOMPONEN ═════════════ -->
+  <h2>4 · Komponen</h2>
+
+  <h3>Kid Mode</h3>
+  <div class="panel kid">
+    <div class="row" style="margin-bottom:22px">
+      <button class="btn-kid">▶ &nbsp;Main!</button>
+      <button class="btn-kid teal">🔊 &nbsp;Dengar lagi</button>
+      <div>
+        <div class="kid-progress"><i></i></div>
+        <div style="font-size:13px;color:var(--kid-muted);margin-top:4px">Progress sesi — tanpa angka, tanpa skor</div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="card-kid" style="background:var(--kid-teal-soft)"><div class="emoji">🔤</div><b>Huruf Ajaib</b><span>Game visual</span></div>
+      <div class="card-kid" style="background:var(--kid-sky-soft)"><div class="emoji">🎵</div><b>Tebak Bunyi</b><span>Game suara</span></div>
+      <div class="card-kid" style="background:var(--kid-sun-soft)"><div class="emoji">🔢</div><b>Lompat Angka</b><span>Garis bilangan</span></div>
+      <div style="text-align:center">
+        <div class="stars">⭐⭐⭐</div>
+        <div style="font-size:14px;color:var(--kid-muted)">Pujian partisipasi —<br/>bukan nilai benar/salah</div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Companion Mode</h3>
+  <div class="panel comp">
+    <div class="row" style="margin-bottom:20px">
+      <button class="btn-comp">Ekspor Laporan Rujukan (PDF)</button>
+      <button class="btn-comp ghost">Lihat detail metrik</button>
+      <input class="input-comp" placeholder="Nama panggilan anak" />
+    </div>
+    <div class="row">
+      <div class="card-comp">
+        <div class="row" style="justify-content:space-between;margin-bottom:8px">
+          <h4>Hasil Sesi — 26 Jul 2026</h4>
+          <span class="badge b-med" style="font-size:12px;padding:5px 12px"><svg width="12" height="12" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 4.5v4.2M8 11.4v.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Sebaiknya diamati</span>
+        </div>
+        <p>Ditemukan pola keraguan saat mengenali pasangan huruf mirip. Ini <b>bukan diagnosis</b> — berikut 3 langkah yang bisa Anda lakukan.</p>
+      </div>
+      <div class="disclaimer">
+        <span>ℹ️</span>
+        <span><b>Hasil Skrining Awal Risiko Belajar</b> — bukan surat diagnosis medis/psikologis resmi. Komponen ini selalu tampil di bawah setiap hasil.</span>
+      </div>
+    </div>
+  </div>
+
+  <h3>Chart perkembangan (contoh anatomi)</h3>
+  <div class="chart-box">
+    <div style="font-weight:800;font-size:14px;margin-bottom:2px">Perkembangan antar sesi</div>
+    <div class="legend"><span><i style="background:#0D9488"></i>Hesitation Index</span><span><i style="background:#DE6A38"></i>NLEE (%)</span></div>
+    <svg id="trend" viewBox="0 0 520 200" style="width:100%">
+      <g stroke="#E3EAEE" stroke-width="1">
+        <line x1="40" y1="30" x2="500" y2="30"/><line x1="40" y1="80" x2="500" y2="80"/>
+        <line x1="40" y1="130" x2="500" y2="130"/><line x1="40" y1="180" x2="500" y2="180"/>
+      </g>
+      <g font-family="Nunito" font-size="10.5" fill="#5C6B76">
+        <text x="34" y="184" text-anchor="end">0</text><text x="34" y="134" text-anchor="end">20</text>
+        <text x="34" y="84" text-anchor="end">40</text><text x="34" y="34" text-anchor="end">60</text>
+        <text x="70" y="196">Sesi 1</text><text x="180" y="196">Sesi 2</text><text x="290" y="196">Sesi 3</text><text x="400" y="196">Sesi 4</text>
+      </g>
+      <polyline points="80,70 190,88 300,105 410,122" fill="none" stroke="#0D9488" stroke-width="2"/>
+      <polyline points="80,95 190,90 300,118 410,140" fill="none" stroke="#DE6A38" stroke-width="2"/>
+      <g fill="#0D9488"><circle cx="80" cy="70" r="4"/><circle cx="190" cy="88" r="4"/><circle cx="300" cy="105" r="4"/><circle cx="410" cy="122" r="4" stroke="#fff" stroke-width="2"/></g>
+      <g fill="#DE6A38"><circle cx="80" cy="95" r="4"/><circle cx="190" cy="90" r="4"/><circle cx="300" cy="118" r="4" stroke="#fff" stroke-width="2"/><circle cx="410" cy="140" r="4"/></g>
+      <text x="418" y="118" font-family="Nunito" font-size="11" font-weight="800" fill="#22303B">23 ▾</text>
+      <text x="418" y="152" font-family="Nunito" font-size="11" font-weight="800" fill="#22303B">16 ▾</text>
+    </svg>
+    <div style="font-size:12px;color:var(--c-muted)">Garis 2px · marker 8px · label langsung hanya di titik terakhir · tren menurun = membaik (dinarasikan, bukan diwarnai)</div>
+  </div>
+
+  <!-- ═════════════ VOICE & TONE ═════════════ -->
+  <h2>5 · Bahasa &amp; Nada (Voice)</h2>
+  <table>
+    <tr><th>Konteks</th><th>❌ Jangan</th><th>✅ Gunakan</th></tr>
+    <tr><td>Hasil HIGH</td><td>"Anak Anda berisiko tinggi disleksia"</td><td>"Kami menemukan pola yang sebaiknya didiskusikan dengan profesional"</td></tr>
+    <tr><td>Hasil LOW</td><td>"Anak Anda normal / aman"</td><td>"Pola belajar tampak tipikal untuk usianya"</td></tr>
+    <tr><td>Kid Mode</td><td>"Jawabanmu salah!"</td><td>"Ayo coba yang berikutnya! 🎈" (tanpa penilaian)</td></tr>
+    <tr><td>Ajakan tes</td><td>"Deteksi disleksia sekarang!"</td><td>"Kenali cara belajar anak Anda lewat permainan"</td></tr>
+  </table>
+
+  <!-- ═════════════ ATURAN ═════════════ -->
+  <h2>6 · Aturan Emas (masuk CLAUDE.md)</h2>
+  <table>
+    <tr><th>#</th><th>Aturan</th></tr>
+    <tr><td>1</td><td>Semua warna WAJIB dari token — dilarang nilai hex hardcoded di komponen.</td></tr>
+    <tr><td>2</td><td>Kid Mode: target sentuh ≥56px, font Baloo 2 ≥17px, tanpa teks paragraf, tanpa skor/hasil/status, TTS untuk semua instruksi.</td></tr>
+    <tr><td>3</td><td>Companion: bahasa observasi (lihat tabel Voice), badge kategori selalu ikon+label, disclaimer skrining di setiap tampilan hasil.</td></tr>
+    <tr><td>4</td><td>Warna status ≠ warna chart ≠ warna dekoratif — tiga kelompok terpisah, tidak saling pinjam.</td></tr>
+    <tr><td>5</td><td>Tanpa animasi/distraksi visual selama trial game berjalan — menjaga validitas telemetri.</td></tr>
+    <tr><td>6</td><td>Kontras teks ≥4.5:1 (badan) / ≥3:1 (teks besar & grafis). Jangan tambah warna baru tanpa uji kontras+CVD.</td></tr>
+  </table>
+
+  <!-- ═════════════ EXPORT ═════════════ -->
+  <h2>7 · Ekspor Token — tailwind.config.ts</h2>
+  <div class="copybar"><span style="font-size:13px;color:var(--c-muted)">Tempel ke <code>theme.extend</code> di tailwind.config</span><button class="copybtn" onclick="copyToken(this)">Salin token</button></div>
+  <pre id="tok">colors: {
+  kid: {
+    bg: '#FFF6EC', surface: '#FFFFFF', ink: '#4A3E55', muted: '#7A6B72',
+    coral: { DEFAULT: '#E4593C', soft: '#FBDDD4', pressed: '#C24630' },
+    teal:  { DEFAULT: '#2FA890', soft: '#D8F2EC', pressed: '#23806E' },
+    sun:   { DEFAULT: '#FFC94D', soft: '#FFF0CE' },
+    lavender: { DEFAULT: '#A78BDB', soft: '#EEE7FA' },
+    sky:   { DEFAULT: '#6EB9E8', soft: '#E1F1FB' },
+  },
+  comp: {
+    bg: '#F6F9FA', surface: '#FFFFFF', ink: '#22303B',
+    muted: '#5C6B76', border: '#E3EAEE',
+    primary: { DEFAULT: '#1F7A6E', soft: '#E2F1EE', deep: '#155A51' },
+  },
+  status: {
+    low:  { text: '#23744A', bg: '#E7F5EC' },
+    med:  { text: '#8A5B0B', bg: '#FCF1DC' },
+    high: { text: '#AC432D', bg: '#FBE9E5' },
+  },
+  chart: { 1: '#0D9488', 2: '#DE6A38', 3: '#7A5FC7', 4: '#B08514' },
+},
+fontFamily: {
+  kid: ['"Baloo 2"', 'cursive'],
+  sans: ['Nunito', 'sans-serif'],
+  dyslexic: ['OpenDyslexic', '"Comic Sans MS"', 'sans-serif'],
+},
+borderRadius: { kid: '24px', comp: '12px' },
+boxShadow: {
+  'kid-btn': '0 5px 0 rgba(74,62,85,.25)',
+  'kid-card': '0 6px 0 rgba(74,62,85,.10)',
+  comp: '0 1px 3px rgba(34,48,59,.08), 0 4px 14px rgba(34,48,59,.06)',
+},
+minHeight: { touch: '56px', 'touch-comp': '44px' },</pre>
+
+  <p class="note" style="margin-top:32px"><b>Status verifikasi:</b> kontras seluruh pasangan teks/latar diuji programatik (≥4.5:1 badan, ≥3:1 besar) ✓ · palet chart lolos 6 cek CVD (validator OKLab) ✓ · warna HIGH sengaja bukan merah murni ✓.</p>
+</div>
+
+<div class="tip" id="tip"></div>
+<script>
+  function copyToken(btn){
+    navigator.clipboard.writeText(document.getElementById('tok').innerText)
+      .then(()=>{btn.textContent='Tersalin ✓';setTimeout(()=>btn.textContent='Salin token',1500)});
+  }
+  // tooltip sederhana pada titik chart
+  const tip=document.getElementById('tip');
+  document.querySelectorAll('#trend circle').forEach(c=>{
+    c.style.cursor='pointer';
+    c.addEventListener('mousemove',e=>{
+      const teal=c.parentNode.getAttribute('fill')==='#0D9488';
+      tip.textContent=(teal?'Hesitation Index: ':'NLEE: ')+Math.round((180-c.getAttribute('cy'))/2.5)+(teal?'':'%');
+      tip.style.left=(e.clientX+12)+'px';tip.style.top=(e.clientY-10)+'px';tip.style.opacity=1;
+    });
+    c.addEventListener('mouseleave',()=>tip.style.opacity=0);
+  });
+</script>
+</body>
+</html>

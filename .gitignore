@@ -1,0 +1,36 @@
+node_modules
+dist
+build.log
+vite.config.ts.timestamp-*
+*.tmp
+.env
+.env.local
+*.local
+.DS_Store
+*.tsbuildinfo
+
+# Secrets tambahan (API key Gemini)
+.env.*.local
+*.key
+
+# Editor / OS
+Thumbs.db
+.vscode/
+.idea/
+
+# Dikecualikan atas permintaan (dokumen meta/perencanaan & catatan kerja)
+CLAUDE.md
+proposal.md
+task.md
+STRUCTURE.md
+docs/CLAUDE_LOG.md
+docs/EVALUASI.md
+
+.vercel
+
+# Setelan lokal alat (jangan di-commit)
+.claude/
+
+# Semua .env kecuali template contoh
+.env*
+!.env.example
