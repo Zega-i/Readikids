@@ -41,6 +41,7 @@ export default function App() {
   const [bukitData, setBukitData] = useState<NumberLineTrialEvent[] | null>(null);
   const [runStartedAt, setRunStartedAt] = useState<number | null>(null);
   const [latestResult, setLatestResult] = useState<ScreeningResult | null>(null);
+  const [cooldownOverrideReason, setCooldownOverrideReason] = useState<string | null>(null);
 
   // Daftar profil anak nyata dari IndexedDB (menggantikan data hardcoded).
   const [allProfiles, setAllProfiles] = useState<ChildProfile[]>([]);
@@ -56,6 +57,19 @@ export default function App() {
       .catch((err) => console.error("[App] gagal memuat profil:", err));
   }, []);
 
+  // Minta penyimpanan permanen agar data on-device tak mudah dihapus browser
+  // (mengurangi risiko eviksi otomatis, mis. Safari 7 hari bila belum dipasang).
+  useEffect(() => {
+    if (navigator.storage?.persist) {
+      void navigator.storage
+        .persisted()
+        .then((already) => {
+          if (!already) void navigator.storage.persist();
+        })
+        .catch(() => {});
+    }
+  }, []);
+
   const refreshProfiles = async (): Promise<ChildProfile[]> => {
     const ps = await listChildProfiles();
     setAllProfiles(ps);
@@ -63,18 +77,21 @@ export default function App() {
   };
 
   // Mulai satu rangkaian skrining baru: catat waktu mulai, kosongkan data lama.
-  const beginNewRun = () => {
+  const beginNewRun = (overrideReason: string | null = null) => {
     setRunStartedAt(Date.now());
     setHutanData(null);
     setSungaiData(null);
     setBukitData(null);
     setCurrentWorldIndex(0);
+    setCooldownOverrideReason(overrideReason);
   };
 
-  const handleStartFromLanding = () => {
-    // Jika sudah ada profil tersimpan di perangkat -> langsung ke Beranda.
-    // Jika belum ada sama sekali -> buat profil pertama lewat consent.
-    if (allProfiles.length > 0) {
+  const handleStartFromLanding = async () => {
+    // Baca profil SEGAR dari DB saat diklik (hindari race: bila profil belum
+    // sempat termuat saat mount, cek langsung agar tak salah arah ke consent).
+    const profiles = await refreshProfiles();
+    if (profiles.length > 0) {
+      setActiveProfile((cur) => cur ?? profiles[0]);
       setCurrentScreen("beranda-pendamping");
     } else {
       setCurrentScreen("consent");
@@ -186,6 +203,7 @@ export default function App() {
               hutan: hutanData ?? [],
               sungai: sungaiData ?? [],
               bukit: bukitData ?? [],
+              cooldownOverrideReason,
             });
             setLatestResult(result);
             setRunStartedAt(null);
@@ -217,8 +235,7 @@ export default function App() {
             if (p) setActiveProfile(p);
           }}
           onStartAdventure={(override) => {
-            if (override) console.log("Override reason:", override.reason);
-            beginNewRun();
+            beginNewRun(override?.reason ?? null);
             setCurrentScreen("map");
           }}
           onOpenLatestStory={() => setCurrentScreen("dashboard-pendamping")}

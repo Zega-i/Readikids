@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 
 // 1. Maskot Cilo Asli
 export const Cilo = (): JSX.Element => {
@@ -137,17 +137,21 @@ export const VisualGame = ({ onComplete, onBack }: VisualGameProps): JSX.Element
 
   const telemetryDataRef = useRef<TrialEvent[]>([]);
   const stimulusRenderTimeRef = useRef<number>(0);
-  const currentPodOptionsRef = useRef<string[]>([]);
 
   const currentTrial = trials[currentTrialIndex];
 
-  useEffect(() => {
+  // Pilihan jawaban dihitung SINKRON dengan huruf yang tampil (dulu lewat
+  // useRef+useEffect yang tertinggal 1 render → pilihan tak cocok dgn huruf).
+  const currentPodOptions = useMemo(() => {
     const rawOptions = podMap[currentTrial.stimulus] || [currentTrial.stimulus, "x", "y"];
     const rng = seededRandom(`${sessionSeed}-trial-${currentTrialIndex}`);
-    currentPodOptionsRef.current = shuffleArray(rawOptions, rng);
-    
-    stimulusRenderTimeRef.current = performance.now();
+    return shuffleArray(rawOptions, rng);
   }, [currentTrialIndex, currentTrial, sessionSeed]);
+
+  // Catat waktu stimulus muncul (untuk waktu reaksi), setelah render.
+  useEffect(() => {
+    stimulusRenderTimeRef.current = performance.now();
+  }, [currentTrialIndex]);
 
   const updateStageDimensions = useCallback(() => {
     const vw = window.innerWidth;
@@ -184,7 +188,7 @@ export const VisualGame = ({ onComplete, onBack }: VisualGameProps): JSX.Element
       stimulus: currentTrial.stimulus,
       trialType: currentTrial.trialType,
       trialIndex: currentTrialIndex,
-      podOptions: currentPodOptionsRef.current,
+      podOptions: currentPodOptions,
       responseKey: selectedLetter,
       isCorrect: selectedLetter === currentTrial.stimulus,
       reactionTimeMs,
@@ -310,7 +314,7 @@ export const VisualGame = ({ onComplete, onBack }: VisualGameProps): JSX.Element
 
         {/* 3. Pod Pilihan Jawaban (3 Batu Bulat Spasi Luas) */}
         <section className="absolute top-[525px] left-0 w-full flex items-center justify-center gap-14 z-10">
-          {currentPodOptionsRef.current.map((letter, idx) => (
+          {currentPodOptions.map((letter, idx) => (
             <button
               key={`${letter}-${idx}`}
               type="button"

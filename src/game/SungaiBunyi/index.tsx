@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 // Sesuaikan path import ini dengan struktur proyek Anda:
 import { speak } from "../../utils/tts";
 
@@ -105,7 +105,6 @@ export const PhonicsGame = ({ onComplete, onBack }: PhonicsGameProps): JSX.Eleme
   const [sessionSeed] = useState(() => Math.random().toString(36).substring(2, 10));
   const [trials] = useState<PhonicsTrialConfig[]>(() => generateTrials(sessionSeed));
   const [currentTrialIndex, setCurrentTrialIndex] = useState(0);
-  const [podOptions, setPodOptions] = useState<string[]>([]);
   const [ciloText, setCiloText] = useState("Dengar bunyinya,\npilih hurufnya!");
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -114,11 +113,17 @@ export const PhonicsGame = ({ onComplete, onBack }: PhonicsGameProps): JSX.Eleme
   const [viewportSize, setViewportSize] = useState({ w: 1280, h: 800 });
 
   const telemetryDataRef = useRef<PhonicsTrialEvent[]>([]);
-  const podForTelemetryRef = useRef<string[]>([]);
   const audioEndTimeRef = useRef<number>(0);
   const replayCountRef = useRef<number>(0);
 
   const currentTrial = trials[currentTrialIndex];
+
+  // Pilihan jawaban dihitung SINKRON dengan bunyi/stimulus (seragam dgn Hutan Huruf).
+  const podOptions = useMemo(() => {
+    const raw = podMap[currentTrial.stimulus] ?? [currentTrial.stimulus, "?", "?"];
+    const rng = seededRandom(`${sessionSeed}-phon-${currentTrialIndex}`);
+    return shuffle(raw, rng);
+  }, [currentTrialIndex, currentTrial, sessionSeed]);
 
   const playStimulus = useCallback(async (syllable: string, isReplay: boolean) => {
     if (isReplay) replayCountRef.current += 1;
@@ -134,11 +139,6 @@ export const PhonicsGame = ({ onComplete, onBack }: PhonicsGameProps): JSX.Eleme
 
   useEffect(() => {
     if (!currentTrial) return;
-    const raw = podMap[currentTrial.stimulus] ?? [currentTrial.stimulus, "?", "?"];
-    const rng = seededRandom(`${sessionSeed}-phon-${currentTrialIndex}`);
-    const shuffled = shuffle(raw, rng);
-    setPodOptions(shuffled);
-    podForTelemetryRef.current = shuffled;
     audioEndTimeRef.current = 0;
     replayCountRef.current = 0;
     setCiloText("Dengar bunyinya,\npilih hurufnya!");
@@ -171,7 +171,7 @@ export const PhonicsGame = ({ onComplete, onBack }: PhonicsGameProps): JSX.Eleme
       stimulus: currentTrial.stimulus,
       trialType: "phonics",
       trialIndex: currentTrialIndex,
-      podOptions: podForTelemetryRef.current,
+      podOptions,
       responseKey: letter,
       isCorrect: letter === currentTrial.stimulus,
       totalTimeMs,
