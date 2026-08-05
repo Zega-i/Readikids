@@ -13,7 +13,17 @@
  *   OPENROUTER_API_KEY  (wajib)
  *   OPENROUTER_MODEL    (opsional, default di bawah)
  */
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+// Tipe minimal request/response — didefinisikan LOKAL agar fungsi ini tidak
+// bergantung pada paket `@vercel/node` saat build Vercel (menghindari error
+// "Cannot find module"). Kompatibel secara struktural dengan yang dikirim Vercel.
+type VercelReq = { method?: string; body?: unknown };
+type VercelRes = { status: (code: number) => { json: (data: unknown) => void } };
+
+// Akses env lewat globalThis tanpa mendeklarasikan global `process` — agar tak
+// bentrok dengan @types/node bila ada, dan tetap jalan tanpa @types/node saat
+// build Vercel. `process.env` tetap tersedia di runtime Node.
+const ENV: Record<string, string | undefined> =
+  (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
 
 // Nemotron (free) bisa butuh ~15 detik menjawab; timeout default Vercel terlalu
 // pendek → fungsi mati (502) sebelum AI selesai. Naikkan ke 60s (maks plan Hobby).
@@ -104,12 +114,12 @@ function isValidPlan(p: unknown): p is {
   );
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
+export default async function handler(req: VercelReq, res: VercelRes): Promise<void> {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
     return;
   }
-  const apiKey = process.env.OPENROUTER_API_KEY;
+  const apiKey = ENV.OPENROUTER_API_KEY;
   if (!apiKey) {
     res.status(500).json({ error: 'OPENROUTER_API_KEY belum diset di server.' });
     return;
@@ -130,7 +140,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         'X-Title': 'ReadiKids',
       },
       body: JSON.stringify({
-        model: process.env.OPENROUTER_MODEL || DEFAULT_MODEL,
+        model: ENV.OPENROUTER_MODEL || DEFAULT_MODEL,
         messages: [{ role: 'user', content: buildPrompt(body) }],
         temperature: 0.4,
       }),
