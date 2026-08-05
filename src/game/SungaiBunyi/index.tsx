@@ -101,6 +101,40 @@ interface PhonicsGameProps {
   onBack?: () => void;
 }
 
+/**
+ * Putar bunyi suku kata. UTAMAKAN file rekaman /audio/<suku>.mp3 (jernih &
+ * konsisten untuk skrining); bila file belum ada / gagal diputar, fallback
+ * otomatis ke TTS. Promise selesai saat audio berakhir agar timing telemetri
+ * (Hesitation Index) tetap akurat.
+ */
+function playSyllable(syllable: string): Promise<void> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (!settled) {
+        settled = true;
+        resolve();
+      }
+    };
+    const fallbackToTts = () => {
+      if (settled) return;
+      settled = true;
+      void speak(syllable, { lang: "id-ID" }).then(() => resolve());
+    };
+    try {
+      const audio = new Audio(`/audio/${syllable}.mp3`);
+      audio.onended = finish;
+      audio.onerror = fallbackToTts; // file belum ada / gagal load
+      const played = audio.play();
+      if (played && typeof played.then === "function") {
+        played.catch(fallbackToTts); // autoplay diblokir / gagal
+      }
+    } catch {
+      fallbackToTts();
+    }
+  });
+}
+
 export const PhonicsGame = ({ onComplete, onBack }: PhonicsGameProps): JSX.Element => {
   const [sessionSeed] = useState(() => Math.random().toString(36).substring(2, 10));
   const [trials] = useState<PhonicsTrialConfig[]>(() => generateTrials(sessionSeed));
@@ -129,7 +163,7 @@ export const PhonicsGame = ({ onComplete, onBack }: PhonicsGameProps): JSX.Eleme
     if (isReplay) replayCountRef.current += 1;
     setIsPlaying(true);
     try {
-      await speak(syllable, { lang: "id-ID" });
+      await playSyllable(syllable);
     } catch {
       // lanjut walau gagal
     }

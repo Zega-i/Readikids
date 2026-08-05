@@ -29,7 +29,7 @@ export default defineConfig({
       },
       workbox: {
         // Precache seluruh aset build → aplikasi 100% berfungsi offline.
-        globPatterns: ['**/*.{js,css,html,png,svg,otf,woff2}'],
+        globPatterns: ['**/*.{js,css,html,png,svg,otf,woff2,mp3,wav,ogg}'],
         // SPA fallback: navigasi halaman dilayani index.html...
         navigateFallback: 'index.html',
         // ...KECUALI /api/* — itu serverless function (proxy AI), harus tembus
