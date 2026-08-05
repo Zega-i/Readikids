@@ -15,6 +15,10 @@
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+// Nemotron (free) bisa butuh ~15 detik menjawab; timeout default Vercel terlalu
+// pendek → fungsi mati (502) sebelum AI selesai. Naikkan ke 60s (maks plan Hobby).
+export const maxDuration = 60;
+
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const DEFAULT_MODEL = 'nvidia/nemotron-3-ultra-550b-a55b:free';
 
