@@ -55,6 +55,17 @@ export const CiloMenulisCerita = ({
   const startTimeRef = useRef<number>(performance.now());
   const doneCalledRef = useRef(false);
 
+  // Simpan versi TERBARU dari prop/callback di ref, agar effect pemroses bisa
+  // berjalan SEKALI di awal tanpa ikut ter-restart saat App render ulang.
+  const processResultsRef = useRef(processResults);
+  const onDoneRef = useRef(onDone);
+  const minDurationRef = useRef(minDurationMs);
+  useEffect(() => {
+    processResultsRef.current = processResults;
+    onDoneRef.current = onDone;
+    minDurationRef.current = minDurationMs;
+  });
+
   // ── Panggung berskala (layar ini boleh center, tidak ada telemetri) ──
   const updateScale = useCallback(() => {
     const vw = window.innerWidth, vh = window.innerHeight;
@@ -72,17 +83,21 @@ export const CiloMenulisCerita = ({
     return () => clearInterval(t);
   }, []);
 
-  // ── Progres tahap: ikuti proses nyata bila ada, jika tidak pakai tempo animasi ──
+  // ── Progres tahap: jalankan proses NYATA SEKALI saat layar muncul ──
+  // Dipicu sekali (deps []) — perubahan referensi callback dari App TIDAK
+  // membuatnya ter-restart. Jadi pipeline (metrik → heuristic → AI/llm) jalan
+  // tepat sekali, lalu pindah ke W10. Callback dibaca dari ref (selalu terbaru).
   useEffect(() => {
     let cancelled = false;
 
     async function run() {
-      // Tahap 1: membaca jejak (MetricCalculator)
       setStageIndex(0);
+      const processResults = processResultsRef.current;
+      const minDurationMs = minDurationRef.current;
 
       if (processResults) {
-        // Jalankan pemrosesan NYATA. Tahap visual maju seiring waktu,
-        // tapi SYARAT pindah layar adalah promise ini selesai.
+        // Jalankan pemrosesan NYATA (metrik → heuristic → AI/llm → simpan).
+        // SYARAT pindah layar: promise ini selesai.
         const proc = processResults();
 
         // gerakkan indikator tahap secara halus selama menunggu
@@ -90,7 +105,8 @@ export const CiloMenulisCerita = ({
         const s2 = setTimeout(() => !cancelled && setStageIndex(2), 1600);
 
         await proc;                    // ← tunggu proses benar-benar selesai
-        clearTimeout(s1); clearTimeout(s2);
+        clearTimeout(s1);
+        clearTimeout(s2);
         if (cancelled) return;
         setStageIndex(2);              // pastikan semua tahap tampak selesai
       } else {
@@ -107,13 +123,16 @@ export const CiloMenulisCerita = ({
 
       if (!cancelled && !doneCalledRef.current) {
         doneCalledRef.current = true;
-        onDone?.();
+        onDoneRef.current?.();
       }
     }
 
     run();
-    return () => { cancelled = true; };
-  }, [processResults, onDone, minDurationMs]);
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Progres bar isi mengikuti tahap (0→33→66→100)
   const progressPct = stageIndex === 0 ? 25 : stageIndex === 1 ? 60 : 92;
