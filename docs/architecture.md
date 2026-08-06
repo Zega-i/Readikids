@@ -5,8 +5,8 @@
 
 ## Prinsip Inti
 
-**Web-first PWA · 100% on-device · tanpa backend · privacy by design.**
-Data perilaku anak tidak pernah meninggalkan perangkat. Sistem tetap berfungsi
+**Web-first PWA · Hybrid Data (IndexedDB + Supabase) · privacy by design.**
+Data perilaku anak secara bawaan menggunakan lokal (local-first), namun metrik agregat dan profil disinkronisasikan ke Supabase. Sistem bisa tetap berfungsi
 penuh secara offline (heuristic engine + template lokal).
 
 ## Diagram Alur Data
@@ -35,7 +35,7 @@ Companion Dashboard (bahasa observasi + disclaimer)
 
 | Keputusan | Alasan |
 | --- | --- |
-| Tanpa backend di MVP | Privasi data anak, nol biaya server, tahan internet mati (demo-safe), sesuai regulasi data anak |
+| Hybrid Backend (Supabase) | Profil anak & metrik agregat disimpan di cloud agar bisa diakses lintas perangkat, sementara raw-events (60 fps) tetap murni lokal (Dexie). |
 | Dexie/IndexedDB, bukan localStorage | Volume telemetri tinggi (60 fps), query berindeks, transaksi |
 | Buffer `useRef` + batch write | State React pada 60 fps membekukan UI |
 | Perubahan skema DB via `version(n+1).upgrade()` | Data perangkat lama wajib selamat (sudah terjadi: v1→v2) |

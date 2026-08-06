@@ -32,24 +32,18 @@ Saat Anda memperbarui kode dan mem-push-nya ke Vercel, *Service Worker* di latar
 
 ---
 
-### Q3: Bagaimana dengan penerapan AI (Gemini) yang membutuhkan API Provider? Bukankah rawan jika tanpa backend?
+### Q3: Bagaimana dengan penerapan AI (Gemini) yang membutuhkan API Provider? 
 
 **A:**  
-Menyimpan API Key rahasia di dalam PWA statis memang berisiko dicuri. Berdasarkan arsitektur proyek ini, ada dua solusi:
-
-1. **Pendekatan MVP (Bring Your Own Key / Fallback Lokal):**
-   Sistem PWA Anda saat ini dirancang tahan banting (*graceful degradation*). Jika tidak ada koneksi atau tidak ada API Key, sistem otomatis menggunakan "Generator Rencana Pendampingan" berbasis *Template Statis* lokal. Opsi lainnya adalah memberikan *input field* bagi Pendamping untuk memasukkan API Key Gemini mereka sendiri, yang tidak akan disimpan di server mana pun.
-
-2. **Pendekatan Skala Produksi (Serverless Functions):**
-   Meskipun Anda tidak menyewa server backend, Anda bisa menggunakan **Serverless Functions** (misal: Vercel Functions). 
-   - API Key Gemini disimpan dengan aman sebagai rahasia (Environment Variable) di Vercel.
-   - PWA (HP Pengguna) mengirim data skor agregat ke Vercel Function.
-   - Vercel Function meneruskannya ke Google Gemini, menerima jawaban, dan mengirim teksnya kembali ke PWA.
-   - Dengan cara ini, API Key tetap aman, dan Anda tetap tidak perlu membayar atau mengelola server backend bulanan.
+Saat ini, proyek telah terhubung dengan **Supabase** (sebagai database online) yang juga memfasilitasi integrasi Backend/Edge Function.
+API Key Gemini disimpan dengan aman sebagai variabel lingkungan (Environment Variables) di server. 
+- PWA (HP Pengguna) mengirim data skor agregat ke API internal (atau Serverless Functions Vercel/Supabase).
+- API tersebut meneruskannya ke Google Gemini, menerima jawaban (Rencana Pendampingan), dan mengirimnya kembali ke PWA.
+- Dengan cara ini, API Key tetap aman, dan Anda tetap tidak perlu membayar mahal atau mengelola server mandiri.
 
 ---
 
-### Q4: Apakah Machine Learning bisa diterapkan di dalam PWA tanpa backend?
+### Q4: Apakah Machine Learning tambahan (Computer Vision) bisa diterapkan di dalam PWA?
 
 **A:**  
 **SANGAT BISA.** Tren saat ini mengarah pada *Edge Computing* atau **On-Device AI**, dan ini sudah tercatat dalam roadmap proyek (seperti *XGBoost Classifier* dan *MediaPipe FaceMesh*).
