@@ -320,8 +320,19 @@ const main = async () => {
   });
 
   await test('generateCompanionPlan tanpa API key → jatuh ke template lokal', async () => {
-    const plan = await generateCompanionPlan(highRiskProfile);
-    assert.equal(plan.source, 'local-template');
+    // Supaya tidak mencetak stack trace TypeError ke console saat testing
+    const originalFetch = globalThis.fetch;
+    const originalWarn = console.warn;
+    globalThis.fetch = () => Promise.reject(new Error('Simulated fetch error'));
+    console.warn = () => {}; // Silence the warning in test
+
+    try {
+      const plan = await generateCompanionPlan(highRiskProfile);
+      assert.equal(plan.source, 'local-template');
+    } finally {
+      globalThis.fetch = originalFetch;
+      console.warn = originalWarn;
+    }
   });
 
   await test('buildCompanionPlanPrompt: tidak bocorkan childRef & minta JSON', () => {
