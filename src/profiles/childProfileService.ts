@@ -9,6 +9,7 @@ import { db, deleteChildData } from '../telemetry/TelemetryDB';
 import { validateAgeYears, validatePseudonym, checkRescreeningCooldown } from './profileRules';
 import type { CooldownCheck } from './profileRules';
 import type { ChildProfile } from '../types/telemetry';
+import { deleteChildProfileSync } from '../../backend/syncService';
 
 export interface CreateChildProfileInput {
   pseudonym: string;
@@ -52,6 +53,13 @@ export async function getChildProfile(id: string): Promise<ChildProfile | undefi
 
 /** Hapus profil beserta SELURUH data skriningnya (hak penghapusan). */
 export async function deleteChildProfile(id: string): Promise<void> {
+  // Hapus dari Supabase lebih dulu (best-effort)
+  try {
+    await deleteChildProfileSync(id);
+  } catch (err) {
+    console.warn('[sync] Gagal menghapus profil dari server:', err);
+  }
+  // Tetap hapus dari lokal apa pun yang terjadi di atas
   await deleteChildData(id);
 }
 

@@ -91,8 +91,10 @@ export async function deleteChildData(childRef: string): Promise<void> {
     'rw',
     [db.sessions, db.events, db.trials, db.riskAssessments, db.childProfiles],
     async () => {
-      await db.events.where('sessionId').anyOf(sessionIds).delete();
-      await db.trials.where('sessionId').anyOf(sessionIds).delete();
+      if (sessionIds.length > 0) {
+        await db.events.where('sessionId').anyOf(sessionIds).delete();
+        await db.trials.where('sessionId').anyOf(sessionIds).delete();
+      }
       await db.riskAssessments.where('childRef').equals(childRef).delete();
       await db.sessions.where('childRef').equals(childRef).delete();
       await db.childProfiles.delete(childRef);

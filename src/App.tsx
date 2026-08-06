@@ -297,11 +297,13 @@ export default function App() {
           }}
           onProfileDeleted={() => {
             void refreshProfiles().then(profiles => {
-              if (profiles.length === 0) {
-                 setActiveProfile(null);
-              } else if (activeProfile && !profiles.find(p => p.id === activeProfile.id)) {
-                 setActiveProfile(profiles[0]);
-              }
+              setActiveProfile(prevActive => {
+                if (profiles.length === 0) return null;
+                if (prevActive && !profiles.find(p => p.id === prevActive.id)) {
+                  return profiles[0];
+                }
+                return prevActive;
+              });
             });
           }}
           onAddChild={() => setCurrentScreen("consent")}

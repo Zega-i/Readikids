@@ -60,10 +60,16 @@ export default function ChildProfileManager({
   }, [refreshKey]);
 
   const handleDelete = async (id: string) => {
-    await deleteChildProfile(id);
-    refreshProfileList();
-    setConfirmDeleteId(null);
-    onProfileDeleted?.();
+    try {
+      await deleteChildProfile(id);
+      refreshProfileList();
+      setConfirmDeleteId(null);
+      onProfileDeleted?.();
+    } catch (err) {
+      console.error("Gagal menghapus profil:", err);
+      alert("Terjadi kesalahan saat menghapus data anak.");
+      setConfirmDeleteId(null);
+    }
   };
 
   return (

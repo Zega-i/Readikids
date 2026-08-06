@@ -52,6 +52,15 @@ export async function pushChildProfile(p: ChildProfile): Promise<SyncResult> {
   return error ? { ok: false, error: error.message } : { ok: true };
 }
 
+/** Hapus profil anak dari server (soft/hard delete tergantung setting Supabase). */
+export async function deleteChildProfileSync(childId: string): Promise<SyncResult> {
+  if (!supabase) return NOT_READY;
+  if (!(await ready())) return { ok: false, error: 'Sesi anonim gagal dibuat.' };
+
+  const { error } = await supabase.from('children').delete().eq('id', childId);
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
 /** Push/replace satu metadata sesi. */
 export async function pushSession(s: SessionRecord): Promise<SyncResult> {
   if (!supabase) return NOT_READY;
