@@ -27,6 +27,7 @@ interface RiskAssessment {
 
 interface CompanionPlanResult {
   source: "gemini" | "openrouter" | "local-template";
+  generatedAt: number;
   summary: string;
   companionActivities: string[];
   referralGuidance: string[];

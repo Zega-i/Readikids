@@ -22,7 +22,7 @@ import BerandaPendamping from "./companion/BerandaPendamping";
 import CompanionDashboard from "./companion/CompanionDashboard";
 import type { ScreeningResult } from "./companion/CompanionDashboard";
 import { buildReferralReportPdf } from "./referral/reportPdf";
-import { getChildProgress } from "./analytics/BehavioralEngine";
+
 import ChildProfileManager from "./companion/ChildProfileManager";
 import type { ChildProfile } from "./types/telemetry";
 

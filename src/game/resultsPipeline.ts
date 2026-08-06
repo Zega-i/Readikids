@@ -159,6 +159,7 @@ export async function runScreeningPipeline(
     },
     plan: {
       source: plan.source,
+      generatedAt: plan.generatedAt || Date.now(),
       summary: plan.summary,
       companionActivities: plan.companionActivities,
       referralGuidance: plan.referralGuidance,

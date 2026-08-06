@@ -64,6 +64,7 @@ export async function getLatestScreeningResult(
     },
     plan: {
       source: plan.source,
+      generatedAt: plan.generatedAt || Date.now(),
       summary: plan.summary,
       companionActivities: plan.companionActivities,
       referralGuidance: plan.referralGuidance,
