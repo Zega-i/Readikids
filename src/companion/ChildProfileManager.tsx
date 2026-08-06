@@ -9,7 +9,6 @@ import type { ChildProfile } from '../types/telemetry';
 import { CiloKancil } from '../components/CiloKancil';
 
 interface ChildProfileManagerProps {
-  onSelect: (profile: ChildProfile) => void;
   /** Fungsi callback untuk tombol kembali ke beranda pendamping */
   onBack?: () => void;
   /** Bertambah setiap kali profil baru dibuat — memicu reload daftar. */
@@ -19,7 +18,6 @@ interface ChildProfileManagerProps {
 }
 
 export default function ChildProfileManager({
-  onSelect,
   onBack,
   refreshKey,
   onProfileDeleted,
@@ -84,9 +82,9 @@ export default function ChildProfileManager({
       <div className="flex-1 max-w-[1280px] w-full mx-auto px-8 py-8">
         <div className="bg-white rounded-3xl shadow-[0px_8px_24px_rgba(74,55,40,0.08)] p-8 max-w-2xl">
           <div className="mb-6">
-            <h1 className="font-black text-[#4a3728] text-2xl">Pilih Anak</h1>
+            <h1 className="font-black text-[#4a3728] text-2xl">Hapus Data Anak</h1>
             <p className="font-bold text-[#6b5a48] text-sm mt-1">
-              Data setiap anak tersimpan terpisah di perangkat ini.
+              Data yang dihapus dari perangkat ini tidak dapat dikembalikan.
             </p>
           </div>
 
@@ -105,18 +103,15 @@ export default function ChildProfileManager({
             <ul className="space-y-3">
               {profiles.map((p) => (
                 <li key={p.id} className="flex flex-col sm:flex-row sm:items-center gap-3 bg-white border-2 border-[#f3e9d7] rounded-2xl p-4 transition-colors hover:border-[#cfe8d6] hover:bg-[#fafffb]">
-                  <button
-                    className="flex-1 text-left flex items-center gap-3 cursor-pointer group"
-                    onClick={() => onSelect(p)}
-                  >
-                    <div className="w-12 h-12 rounded-full bg-[#f3e9d7] flex items-center justify-center text-xl shrink-0 group-hover:bg-[#cfe8d6] transition-colors">
+                  <div className="flex-1 flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-[#f3e9d7] flex items-center justify-center text-xl shrink-0">
                       🧒
                     </div>
                     <div>
                       <span className="block font-black text-[#4a3728] text-lg">{p.pseudonym}</span>
                       <span className="block font-bold text-[#6b5a48] text-sm">{p.ageYears} tahun</span>
                     </div>
-                  </button>
+                  </div>
 
                   <div className="flex items-center gap-2 sm:ml-auto shrink-0 self-end sm:self-auto border-t sm:border-t-0 pt-3 sm:pt-0 border-[#f3e9d7] w-full sm:w-auto">
                     {confirmDeleteId === p.id ? (

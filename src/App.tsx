@@ -333,12 +333,6 @@ export default function App() {
       {currentScreen === "kelola" && (
         <ChildProfileManager
           refreshKey={refreshKey}
-          onSelect={(p) => {
-            setActiveProfile(p);
-            setLatestResult(null);
-            void refreshProfiles();
-            setCurrentScreen("beranda-pendamping");
-          }}
           onProfileDeleted={() => {
             void refreshProfiles().then(profiles => {
               setActiveProfile(prevActive => {
