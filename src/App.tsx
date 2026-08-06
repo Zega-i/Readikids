@@ -21,6 +21,8 @@ import { PhonicsTrialEvent } from "./game/SungaiBunyi";
 import BerandaPendamping from "./companion/BerandaPendamping";
 import CompanionDashboard from "./companion/CompanionDashboard";
 import type { ScreeningResult } from "./companion/CompanionDashboard";
+import { buildReferralReportPdf } from "./referral/reportPdf";
+import { getChildProgress } from "./analytics/BehavioralEngine";
 import ChildProfileManager from "./companion/ChildProfileManager";
 import type { ChildProfile } from "./types/telemetry";
 
@@ -225,6 +227,38 @@ export default function App() {
             return getLatestScreeningResult(profileId);
           }}
           onStartNext={() => setCurrentScreen("beranda-pendamping")}
+          onSavePDF={async (result) => {
+            try {
+              const pdfBytes = await buildReferralReportPdf({
+                child: activeProfile,
+                assessment: {
+                  sessionId: result.sessionId,
+                  childRef: activeProfile.id,
+                  createdAt: Date.now(),
+                  compositeScore: result.assessment.compositeScore,
+                  level: result.assessment.level,
+                  breakdown: result.assessment.breakdown,
+                  domains: result.assessment.domains,
+                  metrics: result.assessment.metrics,
+                },
+                history: [],
+                plan: result.plan
+              });
+              const blob = new Blob([pdfBytes], { type: "application/pdf" });
+              const url = URL.createObjectURL(blob);
+
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = `Laporan_ReadiKids_${activeProfile.pseudonym}_${new Date().toISOString().split("T")[0]}.pdf`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(url);
+            } catch (err) {
+              console.error("Gagal membuat PDF:", err);
+              alert("Gagal membuat laporan PDF.");
+            }
+          }}
         />
       )}
 
@@ -253,16 +287,19 @@ export default function App() {
       )}
 
       {currentScreen === "kelola" && (
-        <ChildProfileManager
-          refreshKey={refreshKey}
-          onSelect={(p) => {
-            setActiveProfile(p);
-            setLatestResult(null);
-            void refreshProfiles();
-            setCurrentScreen("beranda-pendamping");
-          }}
-          onAddChild={() => setCurrentScreen("consent")}
-        />
+        <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+          <ChildProfileManager
+            refreshKey={refreshKey}
+            onSelect={(p) => {
+              setActiveProfile(p);
+              setLatestResult(null);
+              void refreshProfiles();
+              setCurrentScreen("beranda-pendamping");
+            }}
+            onAddChild={() => setCurrentScreen("consent")}
+            onBack={() => setCurrentScreen("beranda-pendamping")}
+          />
+        </div>
       )}
 
       {currentScreen === "sungai-bunyi" && (
