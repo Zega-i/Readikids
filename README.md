@@ -94,7 +94,7 @@ memakai template lokal dan semua fitur tetap berfungsi. Uji koneksi: `npm run te
 - ✅ Profil multi-anak (pseudonym + validasi usia 6–9, tanpa identitas asli)
 - ✅ Consent orang tua/wali sebagai gerbang wajib pembuatan profil
 - ✅ Cooldown skrining ulang 14–28 hari (soft-block, alasan pelanjutan dicatat)
-- ✅ Prototype skrining end-to-end + Companion Dashboard
+- ✅ Skrining 3 mini-game end-to-end + Companion Dashboard (beranda, riwayat, laporan PDF)
 - ✅ Simulator demo (`Shift+D`) & narasi suara (TTS Bahasa Indonesia)
 - ✅ PWA installable + offline penuh (service worker)
 - ✅ Data local-first di perangkat (IndexedDB) + sinkron agregat opsional (Supabase) + hak hapus per anak (`deleteChildData`)
@@ -114,23 +114,22 @@ src/
 ├── ml/          heuristic (risk engine) · llmRecommendation (Gemini + fallback)
 ├── analytics/   BehavioralEngine (analisis sesi & progres antar sesi)
 ├── profiles/    childProfileService · profileRules (usia 6–9, cooldown)
-├── onboarding/  ConsentFlow · ChildProfileForm
-├── game/        mini-game Kid Mode + useScreeningSession (logika headless)
-├── companion/   CompanionDashboard (bahasa observasi)
+├── onboarding/  ParentConsentCilo · ChildProfileForm
+├── game/        3 mini-game ber-seed (HutanHuruf · SungaiBunyi · BukitAngka) · resultsPipeline
+├── companion/   Beranda · CompanionDashboard · RiwayatLaporan · ChildProfileManager · TentangPrivasi
 ├── referral/    reportPdf · referralGuide (Laporan Rujukan)
 ├── utils/       fallbackTemplates · simulation · tts (id-ID)
 └── types/       telemetry.ts — kontrak data tunggal
+
+backend/         Supabase: klien · auth anonim · syncService · schema.sql   [sinkron agregat opsional]
+api/             companion-plan.ts — serverless proxy AI Gemini (Vercel Functions)
 ```
 
 ## 📖 Dokumentasi
 
-| File | Isi |
-| --- | --- |
-| [`docs/Markdown_Readikids_V4.md`](docs/Markdown_Readikids_V4.md) | Blueprint lengkap (sumber kebenaran) |
-| [`docs/architecture.md`](docs/architecture.md) | Ringkasan arsitektur + evolusi tier |
-| [`task.md`](task.md) | Papan status fase & tugas |
-| [`CLAUDE.md`](CLAUDE.md) | Aturan kerja untuk kontributor & Claude Code |
-| `design/` | Design system + mockup UI |
+Design system & mockup UI ada di [`design/`](design/). Dokumen blueprint,
+arsitektur, dan catatan kerja internal (perencanaan) sengaja **tidak
+dipublikasikan** ke repo ini — dikelola terpisah oleh tim.
 
 ## 🔐 Privasi & Keamanan
 

@@ -1,40 +1,36 @@
-# src/game — Arsitektur Sesi Skrining (siap ganti desain total)
+# src/game — Mini-game skrining (Kid Mode)
 
-UI dianggap **kulit yang bisa dibuang**. Pemisahan lapisan di folder ini
-dibuat agar redesign total (Canvas, alur baru, tambah/kurang fitur) tidak
-pernah menyentuh logika dan data:
+Tiga mini-game mandiri yang merekam telemetri perilaku diam-diam saat anak
+bermain, lalu menyerahkan datanya ke pipeline hasil. Tiap game berdiri sendiri
+(punya generator trial + layar "selesai" sendiri) dan hanya berkomunikasi
+lewat prop `onComplete` / `onBack`.
 
 ```
 game/
-├── trialBank.ts           ← DATA: daftar trial, label game, ambang.
-│                            Ubah soal/urutan/jumlah → edit file ini saja.
-├── useScreeningSession.ts ← MESIN (headless, tanpa UI): state machine
-│                            (trial/cheer/break/end), timing, hesitation,
-│                            misclick, telemetri, simulator, analisis.
-└── PrototypeScreening.tsx ← KULIT: presentasi sesuai mockup Kid Mode.
-                             Boleh diganti/dibuang kapan pun.
+├── HutanHuruf/      Huruf cermin (b/d/p/q vs a/m/o) → Letter-Reversal Latency
+├── SungaiBunyi/     Tebak bunyi/fonem (audio ma/na/wa) → Hesitation Index
+├── BukitAngka/      Garis bilangan (estimasi posisi angka) → NLEE
+├── MapAdventureCilo.tsx  Peta dunia: gerbang urutan game (terkunci berjenjang)
+├── PuncakBintang.tsx · CiloMenulisCerita.tsx  Layar penutup + pemrosesan hasil
+├── resultsPipeline.ts   Gabungkan telemetri 3 game → TrialRecord[] →
+│                        aggregateTrials → assessRisk → rencana → simpan (IndexedDB + sync)
+└── trialBank.ts     Konstanta ambang (LINE_CORRECT_TOLERANCE). *Bukan* bank soal —
+                     komposisi soal ada di generator ber-seed tiap game.
 ```
 
-## Cara mengganti UI tanpa merusak apa pun
+## Randomisasi per sesi (bentuk paralel)
 
-1. Buat komponen baru, panggil `useScreeningSession({ child, ... })`.
-2. Render berdasarkan `session.phase`:
-   - `trial` → tampilkan `session.trial` (union `choice` | `line`).
-   - `cheer` → selingan netral (`phase.text`), maju otomatis.
-   - `break` → antar-game; panggil `session.continueAfterBreak()`.
-   - `end` → layar penutup; hasil dikirim lewat `onComplete`.
-3. Teruskan interaksi ke aksi hook — JANGAN menghitung sendiri:
-   - `answerChoice(option, index)` · `placeLine(pct)` + `confirmLine()`
-   - `markHoverStart/End` (sumber Hesitation Index)
-   - `markMisclick()` (tap di luar target)
-   - `replayInstruction()` (TTS) · `abort()`
-4. Jenis game/trial baru → tambah varian union `Trial` di `trialBank.ts`
-   + satu cabang submit di mesin; UI lama tidak akan rusak (TypeScript
-   memaksa penanganan varian baru saat kompilasi).
+Tiap game membuat **`sessionSeed` baru** setiap dimainkan, lalu menghasilkan trial
+dengan **stratifikasi TETAP** (mis. Hutan: 6 cermin + 4 kontrol) namun **urutan
+diacak**. Efeknya: tingkat kesulitan & jenis soal sama antar sesi (bisa
+dibandingkan ke ambang tetap), tapi item/urutan spesifik berbeda tiap sesi
+(anti-hafalan). Seed direkam di telemetri untuk reproduksi. **Bukan adaptif ke
+performa** — demi validitas skrining.
 
-## Aturan yang TIDAK ikut berubah bersama desain (CLAUDE.md)
+## Aturan yang tidak boleh dilanggar (CLAUDE.md)
 
-- Kid Mode tanpa skor/benar-salah/timer terlihat; pujian netral saja.
-- Ubin jawaban seragam; tanpa animasi selama trial berjalan.
-- Semua instruksi dibacakan TTS; target sentuh ≥56px (`min-h-touch`).
+- Kid Mode tanpa skor/benar-salah/timer terlihat; hanya pujian partisipasi netral.
+- Ubin jawaban seragam; **tanpa animasi selama trial berjalan** (menjaga telemetri).
+- Instruksi dibacakan TTS; target sentuh besar (ramah motorik anak).
 - Telemetri direkam diam-diam pada setiap interaksi — jangan dilewati.
+- Jangan menyentuh engine terlindungi: `src/telemetry/*` & `src/ml/heuristic.ts`.
