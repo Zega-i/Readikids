@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "typecheck": "tsc -b --force",
     "test": "tsx tests/core.test.ts",
-    "test:ai": "node --env-file=.env scripts/test-ai.mjs"
+    "test:ai": "node --env-file=.env scripts/test-gemini.mjs"
   },
   "dependencies": {
     "@fontsource/nunito": "^5.3.0",

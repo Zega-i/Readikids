@@ -2,15 +2,15 @@
 
 # 📚 ReadiKids AI
 
-**Skrining dini kesulitan belajar (disleksia & diskalkulia) untuk anak usia 6–9 tahun — 100% berjalan di perangkat.**
+**Skrining dini kesulitan belajar (disleksia & diskalkulia) untuk anak usia 6–9 tahun — arsitektur local-first, berjalan penuh bahkan tanpa internet.**
 
-Anak bermain, sistem diam-diam membaca pola belajarnya, lalu menyusun *Rencana Pendampingan* untuk orang tua & guru. Tanpa server, tanpa nama asli anak, tanpa vonis.
+Anak bermain, sistem diam-diam membaca pola belajarnya, lalu menyusun *Rencana Pendampingan* untuk orang tua & guru. Event mentah tetap di perangkat, tanpa nama asli anak, tanpa vonis.
 
 <br>
 
 ![Status](https://img.shields.io/badge/status-MVP%20aktif-2dd4bf)
 ![Platform](https://img.shields.io/badge/platform-PWA%20·%20offline--first-6366f1)
-![Privacy](https://img.shields.io/badge/data-100%25%20on--device-16a34a)
+![Privacy](https://img.shields.io/badge/data-local--first%20·%20hybrid-16a34a)
 ![React](https://img.shields.io/badge/React-18-61dafb?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-5-646cff?logo=vite&logoColor=white)
@@ -31,8 +31,8 @@ Anak bermain, sistem diam-diam membaca pola belajarnya, lalu menyusun *Rencana P
 
 | | |
 | --- | --- |
-| 🔒 **Privasi mutlak** | Data perilaku anak tidak pernah meninggalkan perangkat. Tanpa akun, tanpa backend, tanpa nama asli (pseudonym + `childRef`). |
-| 📡 **Offline penuh** | PWA installable yang tetap 100% fungsional tanpa internet — cocok untuk sekolah & posyandu daerah. |
+| 🔒 **Privasi kuat** | Event perilaku mentah (60 fps) tidak pernah meninggalkan perangkat — hanya metrik agregat yang (opsional) disinkron. Tanpa nama asli (pseudonym + `childRef`). |
+| 📡 **Offline-first** | PWA installable yang tetap 100% fungsional tanpa internet; sinkronisasi & AI hanya lapisan opsional saat online — cocok untuk sekolah & posyandu daerah. |
 | 🧠 **Telemetri diam** | Skrining dari *cara* anak bermain (waktu reaksi, keraguan, akurasi estimasi angka) pada 60 fps — bukan sekadar benar/salah. |
 | 🧒 **Ramah anak** | Kid Mode tak pernah menampilkan skor, timer, atau leaderboard — hanya pujian partisipasi netral. |
 | 🤝 **Bahasa observasi** | Hasil untuk Pendamping selalu berupa observasi + disclaimer, tidak pernah vonis. |
@@ -74,9 +74,10 @@ npm run dev          # http://localhost:5173
 ```
 
 Konfigurasi Gemini **opsional** — salin `.env.example` → `.env` lalu isi
-`VITE_GEMINI_API_KEY` ([dapatkan gratis di Google AI Studio](https://aistudio.google.com)).
-Tanpa key atau saat offline, sistem otomatis memakai template lokal dan semua
-fitur tetap berfungsi.
+`GEMINI_API_KEY` & `GEMINI_MODEL` ([dapatkan gratis di Google AI Studio](https://aistudio.google.com)).
+Kunci ini dipakai **server-side** oleh serverless proxy `api/companion-plan.ts`
+(tidak pernah ter-bundle ke browser). Tanpa key atau saat offline, sistem otomatis
+memakai template lokal dan semua fitur tetap berfungsi. Uji koneksi: `npm run test:ai`.
 
 ### Perintah yang Tersedia
 
@@ -85,7 +86,7 @@ fitur tetap berfungsi.
 | `npm run dev` | Dev server (Vite, hot reload) |
 | `npm run build` | Build produksi (`tsc -b && vite build`) |
 | `npm run preview` | Pratinjau hasil build |
-| `npm test` | Unit test core engine (21+ tes) |
+| `npm test` | Unit test core engine (27 tes) |
 | `npm run typecheck` | Type-check strict (`tsc -b --force`) |
 
 ## 🧩 Fitur Saat Ini
@@ -96,12 +97,13 @@ fitur tetap berfungsi.
 - ✅ Prototype skrining end-to-end + Companion Dashboard
 - ✅ Simulator demo (`Shift+D`) & narasi suara (TTS Bahasa Indonesia)
 - ✅ PWA installable + offline penuh (service worker)
-- ✅ Data 100% di perangkat (IndexedDB) + hak hapus per anak (`deleteChildData`)
+- ✅ Data local-first di perangkat (IndexedDB) + sinkron agregat opsional (Supabase) + hak hapus per anak (`deleteChildData`)
 
 ## 🛠️ Tech Stack
 
 **React 18** · **TypeScript** (strict) · **Vite 5** · **Tailwind CSS 3** ·
 **Dexie** (IndexedDB) · **vite-plugin-pwa** · **pdf-lib** + **html2canvas** (Laporan PDF) ·
+**Supabase** (sinkron agregat opsional, auth anonim) · **Vercel Functions** (proxy AI) ·
 **Google Gemini** (opsional, dengan fallback lokal)
 
 ## 📁 Struktur Proyek
@@ -132,15 +134,16 @@ src/
 
 ## 🔐 Privasi & Keamanan
 
-Tanpa server · tanpa nama asli anak · prompt LLM hanya berisi metrik agregat ·
+Local-first · event mentah tetap di perangkat · hanya metrik agregat yang disinkron ·
+prompt LLM hanya berisi metrik agregat (tanpa pseudonym/`childRef`) ·
 disclaimer skrining tampil di setiap hasil dan setiap halaman laporan PDF ·
 dirancang selaras dengan prinsip **COPPA** & **GDPR** untuk data anak.
 
 ## 🗺️ Roadmap Singkat
 
-- **Tier 1 — Keluarga/Pendamping** *(sekarang)* — on-device penuh, tanpa akun.
+- **Tier 1 — Keluarga/Pendamping** — fondasi local-first di perangkat, jalan penuh tanpa internet.
 - **Tier 1.5 — Instansi kecil** — ekspor/impor file terenkripsi + Laporan Rujukan PDF, tanpa internet.
-- **Tier 2 — Mode Institusi** *(roadmap)* — backend opsional; hanya sinkron metrik agregat, local-first tetap.
+- **Tier 2 — Sinkron hibrida** *(aktif — tahap awal)* — Supabase (auth anonim + RLS) menyinkron **hanya metrik agregat**; event mentah tetap di perangkat, local-first tetap sumber kebenaran. Proxy AI Gemini via Vercel Functions.
 
 ---
 

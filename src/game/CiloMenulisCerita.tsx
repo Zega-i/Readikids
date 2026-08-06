@@ -246,7 +246,7 @@ export const CiloMenulisCerita = ({
         {/* Footer privasi */}
         <div className="absolute left-0 w-full text-center" style={{ top: 768 }}>
           <p className="font-bold text-[#a98f6f] text-xs">
-            ditulis di perangkat ini · anak tidak melihat layar ini
+            hanya untuk pendamping · anak tidak melihat layar ini
           </p>
         </div>
       </div>

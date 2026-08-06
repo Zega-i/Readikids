@@ -171,8 +171,8 @@ export interface ChildProfileForPlan {
 
 /** Rencana Pendampingan hasil generator (pengganti IEP pada v2). */
 export interface CompanionPlanResult {
-  /** Sumber rencana: LLM via proxy ('openrouter'/'gemini') atau 'local-template' (fallback offline). */
-  source: 'gemini' | 'openrouter' | 'local-template';
+  /** Sumber rencana: LLM via proxy Gemini ('gemini') atau 'local-template' (fallback offline). */
+  source: 'gemini' | 'local-template';
   generatedAt: number;
   /** Ringkasan hasil dalam bahasa observasi (bukan vonis). */
   summary: string;

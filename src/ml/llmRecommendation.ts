@@ -140,7 +140,7 @@ export async function generateCompanionPlan(
     }
 
     return {
-      source: 'openrouter',
+      source: 'gemini',
       generatedAt: Date.now(),
       summary: payload.summary,
       companionActivities: payload.companionActivities,

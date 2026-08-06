@@ -299,7 +299,7 @@ export const PetaDuniaAnak = ({
       {/* Footer Bawah (100% Persis Kodenya) */}
       <footer className="w-full py-2 bg-[#f3e9d7]/80 backdrop-blur-sm text-center px-4 shrink-0 z-10">
         <p className="font-bold text-[#6b5a48] text-[11px] sm:text-xs max-w-4xl mx-auto leading-relaxed">
-          100% tersimpan di perangkat ini · tanpa akun · ReadiKids
+          Rekaman anak tetap di perangkat · nama samaran · ReadiKids
         </p>
       </footer>
     </main>

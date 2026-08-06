@@ -23,8 +23,9 @@ CLAUDE.md
 proposal.md
 task.md
 STRUCTURE.md
-docs/CLAUDE_LOG.md
-docs/EVALUASI.md
+
+# Seluruh folder dokumentasi internal (tidak dipublikasikan ke repo)
+docs/
 
 .vercel
 

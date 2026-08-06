@@ -65,6 +65,7 @@ interface BerandaPendampingProps {
   onOpenLatestStory?: (sessionId: string) => void;
   onOpenHistory?: () => void;
   onOpenManage?: () => void;
+  onOpenTentang?: () => void;
   onToLanding?: () => void;
 }
 
@@ -78,6 +79,7 @@ export const BerandaPendamping = ({
   onOpenLatestStory,
   onOpenHistory,
   onOpenManage,
+  onOpenTentang,
   onToLanding,
 }: BerandaPendampingProps): JSX.Element => {
   const [data, setData] = useState<BerandaData | null>(null);
@@ -122,6 +124,11 @@ export const BerandaPendamping = ({
           <button onClick={onOpenManage} className="font-bold text-[#6b5a48] text-sm cursor-pointer hover:text-[#4a3728]">
             ⚙ Kelola
           </button>
+          {onOpenTentang && (
+            <button onClick={onOpenTentang} className="font-bold text-[#6b5a48] text-sm cursor-pointer hover:text-[#4a3728]">
+              ℹ️ Tentang
+            </button>
+          )}
           {onToLanding && (
             <button
               type="button"

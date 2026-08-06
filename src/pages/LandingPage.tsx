@@ -89,7 +89,7 @@ export default function LandingPage({
           </h1>
 
           <p className="font-bold text-xs sm:text-sm max-w-xl leading-relaxed mt-1 text-[#6b5a48]">
-            ±15 menit main bareng Cilo. Bukan tes, bukan diagnosis — hanya cara seru mengenali cara belajar si kecil. Gratis, tanpa akun, data tetap di perangkat.
+            ±15 menit main bareng Cilo. Bukan tes, bukan diagnosis — hanya cara seru mengenali cara belajar si kecil. Gratis, tanpa daftar, rekaman anak tetap di perangkat.
           </p>
 
           <div className="pt-1 flex flex-col items-start gap-1.5 w-full sm:w-auto">

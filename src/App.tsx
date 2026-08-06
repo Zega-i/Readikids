@@ -25,6 +25,7 @@ import { buildReferralReportPdf } from "./referral/reportPdf";
 
 import ChildProfileManager from "./companion/ChildProfileManager";
 import RiwayatLaporan from "./companion/RiwayatLaporan";
+import TentangPrivasi from "./companion/TentangPrivasi";
 import type { ChildProfile } from "./types/telemetry";
 
 // Pipeline nyata (menggantikan data dummy)
@@ -34,7 +35,7 @@ import { listChildProfiles } from "./profiles/childProfileService";
 
 export default function App() {
   // Tambahkan "sungai-bunyi" ke tipe currentScreen
-  const [currentScreen, setCurrentScreen] = useState<"landing" | "consent" | "map" | "hutan-huruf" | "hutan-selesai" | "sungai-bunyi" | "sungai-selesai" | "bukit-angka" | "bukit-selesai" | "penutup" | "cilo-menulis" | "dashboard-pendamping" | "beranda-pendamping" | "kelola" | "riwayat">("landing");
+  const [currentScreen, setCurrentScreen] = useState<"landing" | "consent" | "map" | "hutan-huruf" | "hutan-selesai" | "sungai-bunyi" | "sungai-selesai" | "bukit-angka" | "bukit-selesai" | "penutup" | "cilo-menulis" | "dashboard-pendamping" | "beranda-pendamping" | "kelola" | "riwayat" | "tentang">("landing");
   const [activeProfile, setActiveProfile] = useState<ChildProfile | null>(null);
   const [currentWorldIndex, setCurrentWorldIndex] = useState(0);
 
@@ -119,6 +120,9 @@ export default function App() {
       setCurrentScreen("sungai-bunyi");
     } else if (worldId === "bukit-angka") {
       setCurrentScreen("bukit-angka");
+    } else if (worldId === "puncak-bintang") {
+      // Puncak Bintang bukan game — ini tujuan akhir / layar penutup selebrasi.
+      setCurrentScreen("penutup");
     } else {
       alert(`Fitur ${worldId} belum tersedia.`);
     }
@@ -303,6 +307,7 @@ export default function App() {
           }}
           onOpenHistory={() => setCurrentScreen("riwayat")}
           onOpenManage={() => setCurrentScreen("kelola")}
+          onOpenTentang={() => setCurrentScreen("tentang")}
           onAddChild={() => setCurrentScreen("consent")}
           onToLanding={() => setCurrentScreen("landing")}
         />
@@ -348,6 +353,10 @@ export default function App() {
             }
           }}
         />
+      )}
+
+      {currentScreen === "tentang" && (
+        <TentangPrivasi onBack={() => setCurrentScreen("beranda-pendamping")} />
       )}
 
       {currentScreen === "sungai-bunyi" && (

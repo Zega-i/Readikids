@@ -11,8 +11,8 @@ const permissionItems = [
   },
   {
     icon: "🔒",
-    title: "data di perangkat ini",
-    description: "tanpa akun · bisa dihapus kapan pun",
+    title: "privasi terjaga",
+    description: "rekaman anak di perangkat · bisa dihapus kapan pun",
   },
   {
     icon: "🌱",
