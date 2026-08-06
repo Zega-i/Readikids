@@ -95,7 +95,7 @@ memakai template lokal dan semua fitur tetap berfungsi. Uji koneksi: `npm run te
 - ✅ Consent orang tua/wali sebagai gerbang wajib pembuatan profil
 - ✅ Cooldown skrining ulang 14–28 hari (soft-block, alasan pelanjutan dicatat)
 - ✅ Skrining 3 mini-game end-to-end + Companion Dashboard (beranda, riwayat, laporan PDF)
-- ✅ Simulator demo (`Shift+D`) & narasi suara (TTS Bahasa Indonesia)
+- ✅ Narasi suara TTS Bahasa Indonesia di setiap instruksi
 - ✅ PWA installable + offline penuh (service worker)
 - ✅ Data local-first di perangkat (IndexedDB) + sinkron agregat opsional (Supabase) + hak hapus per anak (`deleteChildData`)
 
