@@ -82,6 +82,7 @@ export default function App() {
     setHutanData(null);
     setSungaiData(null);
     setBukitData(null);
+    setLatestResult(null);
     setCurrentWorldIndex(0);
     setCooldownOverrideReason(overrideReason);
   };
@@ -217,8 +218,10 @@ export default function App() {
           activeProfile={activeProfile}
           fetchLatestResult={async (profileId) => {
             // Hasil dari sesi yang baru saja dimainkan (di memori) bila ada,
-            // jika tidak baca hasil terakhir dari IndexedDB.
-            if (latestResult) return latestResult;
+            // dan pastikan hasil in-memory tersebut milik profil yang sedang aktif.
+            if (latestResult && latestResult.childName === activeProfile.pseudonym) {
+              return latestResult;
+            }
             return getLatestScreeningResult(profileId);
           }}
           onStartNext={() => setCurrentScreen("beranda-pendamping")}
@@ -232,7 +235,10 @@ export default function App() {
           fetchBerandaData={async (profileId) => getBerandaData(profileId)}
           onSwitchProfile={(profileId) => {
             const p = allProfiles.find((x) => x.id === profileId);
-            if (p) setActiveProfile(p);
+            if (p) {
+              setActiveProfile(p);
+              setLatestResult(null);
+            }
           }}
           onStartAdventure={(override) => {
             beginNewRun(override?.reason ?? null);
@@ -251,6 +257,7 @@ export default function App() {
           refreshKey={refreshKey}
           onSelect={(p) => {
             setActiveProfile(p);
+            setLatestResult(null);
             void refreshProfiles();
             setCurrentScreen("beranda-pendamping");
           }}
