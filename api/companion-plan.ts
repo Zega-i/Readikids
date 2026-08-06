@@ -3,15 +3,15 @@
  *
  * Kenapa ada: menyembunyikan API key AI di server (tidak pernah di browser).
  * Frontend mengirim METRIK AGREGAT saja (tanpa pseudonym / data mentah);
- * fungsi ini membangun prompt, memanggil OpenRouter (OpenAI-compatible),
- * lalu mengembalikan JSON rencana. Bila gagal, frontend jatuh ke template lokal.
+ * fungsi ini membangun prompt, memanggil Gemini (Google AI Studio), lalu
+ * mengembalikan JSON rencana. Bila gagal, frontend jatuh ke template lokal.
  *
- * Provider netral: cukup ganti OPENROUTER_MODEL / endpoint untuk pindah model.
- * Default model: NVIDIA Nemotron 3 Ultra (gratis) di OpenRouter.
+ * Provider: Google Gemini. Ganti model lewat env GEMINI_MODEL (mis. Flash =
+ * gratis di free tier, ~1.500 req/hari, tanpa billing).
  *
  * Env (server-only, TANPA awalan VITE_):
- *   OPENROUTER_API_KEY  (wajib)
- *   OPENROUTER_MODEL    (opsional, default di bawah)
+ *   GEMINI_API_KEY  (wajib) — key dari aistudio.google.com (format baru "AQ.")
+ *   GEMINI_MODEL    (opsional, default di bawah)
  */
 // Tipe minimal request/response — didefinisikan LOKAL agar fungsi ini tidak
 // bergantung pada paket `@vercel/node` saat build Vercel (menghindari error
@@ -25,12 +25,15 @@ type VercelRes = { status: (code: number) => { json: (data: unknown) => void } }
 const ENV: Record<string, string | undefined> =
   (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
 
-// Nemotron (free) bisa butuh ~15 detik menjawab; timeout default Vercel terlalu
-// pendek → fungsi mati (502) sebelum AI selesai. Naikkan ke 60s (maks plan Hobby).
+// Gemini Flash umumnya cepat, tapi beri ruang aman untuk cold start / trafik.
 export const maxDuration = 60;
 
-const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const DEFAULT_MODEL = 'nvidia/nemotron-3-ultra-550b-a55b:free';
+const DEFAULT_MODEL = 'gemini-3.6-flash';
+
+/** Endpoint Gemini generateContent untuk sebuah model. */
+function geminiUrl(model: string): string {
+  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+}
 
 interface Assessment {
   compositeScore: number;
@@ -119,9 +122,9 @@ export default async function handler(req: VercelReq, res: VercelRes): Promise<v
     res.status(405).json({ error: 'Method not allowed' });
     return;
   }
-  const apiKey = ENV.OPENROUTER_API_KEY;
+  const apiKey = ENV.GEMINI_API_KEY;
   if (!apiKey) {
-    res.status(500).json({ error: 'OPENROUTER_API_KEY belum diset di server.' });
+    res.status(500).json({ error: 'GEMINI_API_KEY belum diset di server.' });
     return;
   }
 
@@ -132,30 +135,32 @@ export default async function handler(req: VercelReq, res: VercelRes): Promise<v
       return;
     }
 
-    const upstream = await fetch(OPENROUTER_URL, {
+    const model = ENV.GEMINI_MODEL || DEFAULT_MODEL;
+    const upstream = await fetch(geminiUrl(model), {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        'x-goog-api-key': apiKey,
         'Content-Type': 'application/json',
-        'X-Title': 'ReadiKids',
       },
       body: JSON.stringify({
-        model: ENV.OPENROUTER_MODEL || DEFAULT_MODEL,
-        messages: [{ role: 'user', content: buildPrompt(body) }],
-        temperature: 0.4,
+        contents: [{ parts: [{ text: buildPrompt(body) }] }],
+        generationConfig: {
+          temperature: 0.4,
+          responseMimeType: 'application/json',
+        },
       }),
     });
 
     if (!upstream.ok) {
       const detail = await upstream.text();
-      res.status(502).json({ error: `OpenRouter ${upstream.status}: ${detail.slice(0, 200)}` });
+      res.status(502).json({ error: `Gemini ${upstream.status}: ${detail.slice(0, 300)}` });
       return;
     }
 
     const data = (await upstream.json()) as {
-      choices?: { message?: { content?: string } }[];
+      candidates?: { content?: { parts?: { text?: string }[] } }[];
     };
-    const text = data.choices?.[0]?.message?.content;
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) {
       res.status(502).json({ error: 'Respons model kosong.' });
       return;
