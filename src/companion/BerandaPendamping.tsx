@@ -258,8 +258,7 @@ export const BerandaPendamping = ({
       {/* Strip disclaimer — hardcode */}
       <footer className="bg-[#f3e9d7] py-3.5 px-6 shrink-0">
         <p className="font-bold text-[#6b5a48] text-[13px] text-center max-w-4xl mx-auto">
-          100% tersimpan di perangkat ini · tanpa akun · ReadiKids adalah skrining awal,
-          bukan alat diagnosis — kepastian hanya dari profesional.
+          ReadiKids adalah skrining awal, bukan alat diagnosis — kepastian hanya dari profesional.
         </p>
       </footer>
 
