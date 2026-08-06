@@ -157,7 +157,13 @@ export default function App() {
       {currentScreen === "consent" && (
         <ParentConsentCilo
           onCreated={handleProfileCreated}
-          onCancel={() => setCurrentScreen("landing")}
+          onCancel={() => {
+            if (allProfiles.length > 0) {
+              setCurrentScreen("beranda-pendamping");
+            } else {
+              setCurrentScreen("landing");
+            }
+          }}
         />
       )}
 
