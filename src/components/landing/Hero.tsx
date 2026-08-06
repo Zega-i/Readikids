@@ -37,7 +37,7 @@ export function Hero({ onLaunch }: HeroProps) {
         </button>
 
         <p className="text-[13px] text-[#6f7ba6] font-nunito-bold mt-[18px] text-center lg:text-left">
-          Untuk pengalaman terbaik, unduh aplikasi Android (lihat tombol pojok kanan atas)
+          versi aplikasi Android segera hadir (lihat tombol pojok kanan atas)
         </p>
       </div>
 

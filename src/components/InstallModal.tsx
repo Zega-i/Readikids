@@ -2,11 +2,17 @@ import { useEffect } from "react";
 import { CiloKancil } from "./CiloKancil";
 
 /**
- * W0b · Modal "Pasang Aplikasi"
+ * W0b · Modal "Pasang Aplikasi" (Android APK).
  *
- * Difokuskan untuk mengarahkan pengguna mengunduh APK Android,
- * karena untuk Desktop aplikasi sudah bisa diakses lewat web.
+ * Desktop cukup memakai versi web (tak perlu dipasang), jadi modal ini fokus
+ * pada satu jalur: memasang aplikasi Android (.apk).
+ *
+ * SLOT LINK APK — isi `APK_DOWNLOAD_URL` saat file APK sudah tersedia
+ * (mis. link Google Drive/GitHub Release, atau Play Store). Selama masih
+ * kosong, tombol tampil NON-AKTIF berlabel "Segera hadir". Begitu URL diisi,
+ * tombol otomatis aktif dan mengarah ke unduhan — tanpa mengubah kode lain.
  */
+const APK_DOWNLOAD_URL = ""; // TODO: isi URL unduh APK saat versi Android siap.
 
 interface InstallModalProps {
   open: boolean;
@@ -26,10 +32,12 @@ export default function InstallModal({ open, onClose }: InstallModalProps): JSX.
 
   if (!open) return null;
 
-  // CTA: Di masa depan akan mengarahkan ke link download APK atau Play Store.
+  const apkReady = APK_DOWNLOAD_URL.trim().length > 0;
+
+  // CTA: hanya aktif bila APK sudah tersedia; jika belum, tombol non-aktif.
   const handleDownloadApk = () => {
-    // TODO: Ganti ini dengan window.open("URL_APK") saat APK sudah jadi.
-    alert("ReadiKids versi Aplikasi Android (APK) saat ini sedang dalam pengembangan. Silakan gunakan versi Web ini sementara waktu!");
+    if (!apkReady) return;
+    window.open(APK_DOWNLOAD_URL, "_blank", "noopener,noreferrer");
     onClose();
   };
 
@@ -67,35 +75,53 @@ export default function InstallModal({ open, onClose }: InstallModalProps): JSX.
               id="install-title"
               className="font-black text-2xl sm:text-[26px] leading-tight text-[#4a3728]"
             >
-              Unduh Aplikasi ReadiKids
+              Pasang Aplikasi Android
             </h2>
             <p className="font-bold text-sm text-[#8a7a66] mt-1">
-              Mainkan ReadiKids di HP atau Tablet Android Anda untuk pengalaman layar penuh yang lebih optimal.
+              Untuk pengalaman layar penuh di HP atau tablet. Di komputer, cukup pakai versi webnya.
             </p>
           </div>
         </div>
 
-        {/* Langkah pemasangan */}
+        {/* Kartu opsi pemasangan (Android saja) */}
         <div className="mt-6 flex flex-col gap-3">
           <div className="flex items-center gap-4 bg-white rounded-2xl border border-[#efe6d6] p-4 shadow-[0px_2px_6px_rgba(74,55,40,0.06)]">
             <div className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl bg-[#fff6e9] text-2xl">
-              🤖
+              📱
             </div>
             <div>
-              <h3 className="font-black text-[#4a3728] text-[15px]">Android (.apk)</h3>
-              <p className="font-bold text-[#8a7a66] text-[13px] mt-0.5">Unduh dan pasang secara manual</p>
+              <h3 className="font-black text-[#4a3728] text-[15px]">Aplikasi Android (.apk)</h3>
+              <p className="font-bold text-[#8a7a66] text-[13px] mt-0.5">Pasang di HP atau tablet Android</p>
             </div>
           </div>
         </div>
 
-        {/* CTA */}
+        {/* CTA — aktif hanya bila APK sudah tersedia */}
         <button
           type="button"
           onClick={handleDownloadApk}
-          className="mt-6 w-full h-14 rounded-full font-black text-base tracking-wide text-white bg-[#3e8e5a] hover:bg-[#34784c] active:scale-[0.98] transition-all shadow-lg cursor-pointer flex items-center justify-center gap-2"
+          disabled={!apkReady}
+          aria-disabled={!apkReady}
+          className={
+            apkReady
+              ? "mt-6 w-full h-14 rounded-full font-black text-base tracking-wide text-white bg-[#3e8e5a] hover:bg-[#34784c] active:scale-[0.98] transition-all shadow-lg cursor-pointer flex items-center justify-center gap-2"
+              : "mt-6 w-full h-14 rounded-full font-black text-base tracking-wide text-[#a99d88] bg-[#ece3d2] border border-[#e0d6c3] cursor-not-allowed flex items-center justify-center gap-2"
+          }
         >
-          <span className="text-lg">📥</span> UNDUH SEKARANG
+          {apkReady ? (
+            <>
+              <span className="text-lg">📥</span> Unduh APK
+            </>
+          ) : (
+            "Segera hadir"
+          )}
         </button>
+
+        {!apkReady && (
+          <p className="mt-3 text-center font-bold text-[12px] text-[#a99d88]">
+            Versi aplikasi Android sedang disiapkan.
+          </p>
+        )}
       </div>
     </div>
   );

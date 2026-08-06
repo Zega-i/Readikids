@@ -90,7 +90,7 @@ export const TentangPrivasi = ({ onBack }: TentangPrivasiProps): JSX.Element => 
                     Akun bersifat <strong className="text-[#4a3728]">anonim otomatis</strong> — tanpa email, tanpa
                     kata sandi. Tiap perangkat hanya bisa mengakses datanya sendiri.
                   </Poin>
-                  <Poin icon="🤖">
+                  <Poin icon="💡">
                     Saran pendampingan AI dibuat dari <strong className="text-[#4a3728]">angka agregat saja</strong> —
                     nama anak tidak pernah dikirim ke layanan AI.
                   </Poin>
