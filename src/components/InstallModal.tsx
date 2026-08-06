@@ -1,24 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { CiloKancil } from "./CiloKancil";
 
 /**
- * W0b · Modal "Pasang Aplikasi" (PWA install).
+ * W0b · Modal "Pasang Aplikasi"
  *
- * Berdiri sendiri agar mudah ditemukan/diperbaiki/ditambah: seluruh UI +
- * logika `beforeinstallprompt` ada di sini. LandingPage cukup mengatur
- * buka/tutup dan memanggil <InstallModal />.
+ * Difokuskan untuk mengarahkan pengguna mengunduh APK Android,
+ * karena untuk Desktop aplikasi sudah bisa diakses lewat web.
  */
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
-}
-
-// Langkah pemasangan manual per platform (kalau prompt bawaan tak tersedia).
-const installSteps = [
-  { icon: "🖥️", title: "Chrome / Edge", desc: "klik ikon pasang ⊕ di kolom alamat" },
-  { icon: "📱", title: "Android", desc: "menu ⋮ → “Tambahkan ke layar utama”" },
-];
 
 interface InstallModalProps {
   open: boolean;
@@ -26,18 +14,6 @@ interface InstallModalProps {
 }
 
 export default function InstallModal({ open, onClose }: InstallModalProps): JSX.Element | null {
-  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-
-  // Tangkap event install bawaan browser (Chrome/Edge/Android).
-  useEffect(() => {
-    const handler = (event: Event) => {
-      event.preventDefault();
-      setInstallPrompt(event as BeforeInstallPromptEvent);
-    };
-    window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
-  }, []);
-
   // Tutup dengan tombol Escape saat modal terbuka.
   useEffect(() => {
     if (!open) return;
@@ -50,14 +26,10 @@ export default function InstallModal({ open, onClose }: InstallModalProps): JSX.
 
   if (!open) return null;
 
-  // CTA: pakai prompt pasang bawaan bila ada (satu-ketuk); jika tidak,
-  // cukup tutup — pengguna mengikuti langkah manual di atas.
-  const handleInstall = async () => {
-    if (installPrompt) {
-      await installPrompt.prompt();
-      await installPrompt.userChoice;
-      setInstallPrompt(null);
-    }
+  // CTA: Di masa depan akan mengarahkan ke link download APK atau Play Store.
+  const handleDownloadApk = () => {
+    // TODO: Ganti ini dengan window.open("URL_APK") saat APK sudah jadi.
+    alert("ReadiKids versi Aplikasi Android (APK) saat ini sedang dalam pengembangan. Silakan gunakan versi Web ini sementara waktu!");
     onClose();
   };
 
@@ -95,39 +67,34 @@ export default function InstallModal({ open, onClose }: InstallModalProps): JSX.
               id="install-title"
               className="font-black text-2xl sm:text-[26px] leading-tight text-[#4a3728]"
             >
-              Pasang Cilo di perangkat
+              Unduh Aplikasi ReadiKids
             </h2>
             <p className="font-bold text-sm text-[#8a7a66] mt-1">
-              Sekali pasang, bisa dibuka tanpa internet.
+              Mainkan ReadiKids di HP atau Tablet Android Anda untuk pengalaman layar penuh yang lebih optimal.
             </p>
           </div>
         </div>
 
         {/* Langkah pemasangan */}
         <div className="mt-6 flex flex-col gap-3">
-          {installSteps.map((step) => (
-            <div
-              key={step.title}
-              className="flex items-center gap-4 bg-white rounded-2xl border border-[#efe6d6] p-4 shadow-[0px_2px_6px_rgba(74,55,40,0.06)]"
-            >
-              <div className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl bg-[#fff6e9] text-2xl">
-                {step.icon}
-              </div>
-              <div>
-                <h3 className="font-black text-[#4a3728] text-[15px]">{step.title}</h3>
-                <p className="font-bold text-[#8a7a66] text-[13px] mt-0.5">{step.desc}</p>
-              </div>
+          <div className="flex items-center gap-4 bg-white rounded-2xl border border-[#efe6d6] p-4 shadow-[0px_2px_6px_rgba(74,55,40,0.06)]">
+            <div className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl bg-[#fff6e9] text-2xl">
+              🤖
             </div>
-          ))}
+            <div>
+              <h3 className="font-black text-[#4a3728] text-[15px]">Android (.apk)</h3>
+              <p className="font-bold text-[#8a7a66] text-[13px] mt-0.5">Unduh dan pasang secara manual</p>
+            </div>
+          </div>
         </div>
 
         {/* CTA */}
         <button
           type="button"
-          onClick={handleInstall}
-          className="mt-6 w-full h-14 rounded-full font-black text-base tracking-wide text-white bg-[#3e8e5a] hover:bg-[#34784c] active:scale-[0.98] transition-all shadow-lg cursor-pointer"
+          onClick={handleDownloadApk}
+          className="mt-6 w-full h-14 rounded-full font-black text-base tracking-wide text-white bg-[#3e8e5a] hover:bg-[#34784c] active:scale-[0.98] transition-all shadow-lg cursor-pointer flex items-center justify-center gap-2"
         >
-          MENGERTI
+          <span className="text-lg">📥</span> UNDUH SEKARANG
         </button>
       </div>
     </div>

@@ -102,7 +102,7 @@ export default function LandingPage({
             </button>
 
             <span className="font-bold text-[10px] sm:text-xs text-[#486b3e]">
-              bisa dipasang seperti aplikasi — lihat tombol kanan atas
+              tersedia juga sebagai aplikasi Android (.apk) — lihat kanan atas
             </span>
           </div>
         </div>
