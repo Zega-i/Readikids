@@ -3,19 +3,13 @@
  * Satu perangkat keluarga dapat menyimpan beberapa profil anak;
  * seluruh data tiap anak terisolasi lewat childRef.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { deleteChildProfile, listChildProfiles } from '../profiles/childProfileService';
-import {
-  importChildData,
-  parseChildExport,
-  readFileAsText,
-} from '../utils/dataTransfer';
 import type { ChildProfile } from '../types/telemetry';
 import { CiloKancil } from '../components/CiloKancil';
 
 interface ChildProfileManagerProps {
   onSelect: (profile: ChildProfile) => void;
-  onAddChild: () => void;
   /** Fungsi callback untuk tombol kembali ke beranda pendamping */
   onBack?: () => void;
   /** Bertambah setiap kali profil baru dibuat — memicu reload daftar. */
@@ -26,7 +20,6 @@ interface ChildProfileManagerProps {
 
 export default function ChildProfileManager({
   onSelect,
-  onAddChild,
   onBack,
   refreshKey,
   onProfileDeleted,
@@ -34,19 +27,6 @@ export default function ChildProfileManager({
   const [profiles, setProfiles] = useState<ChildProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [importError, setImportError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const handleImportFile = async (file: File): Promise<void> => {
-    setImportError(null);
-    try {
-      const data = parseChildExport(await readFileAsText(file));
-      const imported = await importChildData(data);
-      setProfiles((ps) => [...ps, imported]);
-    } catch (err) {
-      setImportError(err instanceof Error ? err.message : 'Gagal mengimpor file.');
-    }
-  };
 
   const refreshProfileList = () => {
     setLoading(true);
@@ -122,7 +102,7 @@ export default function ChildProfileManager({
               <p className="text-sm text-[#8a7a66] mt-1">Tambahkan profil untuk memulai skrining pertama.</p>
             </div>
           ) : (
-            <ul className="space-y-3 mb-6">
+            <ul className="space-y-3">
               {profiles.map((p) => (
                 <li key={p.id} className="flex flex-col sm:flex-row sm:items-center gap-3 bg-white border-2 border-[#f3e9d7] rounded-2xl p-4 transition-colors hover:border-[#cfe8d6] hover:bg-[#fafffb]">
                   <button
@@ -167,43 +147,6 @@ export default function ChildProfileManager({
                 </li>
               ))}
             </ul>
-          )}
-
-          <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t-2 border-[#f3e9d7]">
-            <button
-              className="flex-1 px-6 py-4 rounded-2xl font-black text-white text-base bg-[#6dbb57] hover:bg-[#5da549] transition-transform active:scale-95 cursor-pointer shadow-md"
-              onClick={onAddChild}
-            >
-              + Tambah Profil Anak
-            </button>
-
-            <div className="flex-1">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="application/json,.json"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) void handleImportFile(file);
-                  e.target.value = ''; // izinkan memilih file yang sama lagi
-                }}
-              />
-              <button
-                className="w-full h-full px-6 py-4 rounded-2xl font-bold text-[#6b5a48] text-base border-2 border-[#e8dfce] bg-white hover:bg-[#f7f2e8] transition-colors cursor-pointer"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                ⬆ Impor Data (.json)
-              </button>
-            </div>
-          </div>
-
-          {importError && (
-            <div className="mt-4 bg-[#fff0f0] border-2 border-[#ffcaca] rounded-2xl p-4">
-              <p className="text-sm font-bold text-[#d43737]">
-                {importError}
-              </p>
-            </div>
           )}
         </div>
       </div>

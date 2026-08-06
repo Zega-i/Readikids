@@ -350,7 +350,6 @@ export default function App() {
               });
             });
           }}
-          onAddChild={() => setCurrentScreen("consent")}
           onBack={() => {
             if (allProfiles.length === 0) {
               setCurrentScreen("landing");
