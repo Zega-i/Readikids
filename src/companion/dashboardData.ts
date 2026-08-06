@@ -20,6 +20,57 @@ async function endedSessions(profileId: string): Promise<SessionRecord[]> {
     .sort((a, b) => (a.endedAt as number) - (b.endedAt as number));
 }
 
+/** Mengambil seluruh riwayat hasil skrining anak dari yang terbaru hingga terlama. */
+export async function getAllScreeningResults(profileId: string): Promise<ScreeningResult[]> {
+  const profile = await db.childProfiles.get(profileId);
+  if (!profile) return [];
+
+  const sessions = await endedSessions(profileId);
+  if (sessions.length === 0) return [];
+
+  // Kita balik urutannya agar terbaru di awal
+  const reversedSessions = [...sessions].reverse();
+  const results: ScreeningResult[] = [];
+
+  for (const s of reversedSessions) {
+    const assessment = await latestAssessmentForSession(s.id);
+    if (!assessment) continue;
+
+    // Untuk riwayat massal, kita *generate* plan secara deterministik/lokal
+    // (fallback) untuk menghemat waktu dan memori jika menggunakan Gemini.
+    const plan = await generateCompanionPlan({
+      childRef: profileId,
+      ageYears: profile.ageYears,
+      assessment,
+    });
+
+    results.push({
+      sessionId: s.id,
+      childName: profile.pseudonym,
+      childAgeYears: profile.ageYears,
+      startedAt: s.startedAt,
+      endedAt: s.endedAt as number,
+      assessment: {
+        compositeScore: assessment.compositeScore,
+        level: assessment.level,
+        breakdown: assessment.breakdown,
+        domains: assessment.domains,
+        metrics: assessment.metrics,
+      },
+      plan: {
+        source: plan.source,
+        generatedAt: plan.generatedAt || Date.now(),
+        summary: plan.summary,
+        companionActivities: plan.companionActivities,
+        referralGuidance: plan.referralGuidance,
+        disclaimer: plan.disclaimer,
+      },
+    });
+  }
+
+  return results;
+}
+
 /** Penilaian terbaru untuk satu sesi (bila ada lebih dari satu). */
 async function latestAssessmentForSession(
   sessionId: string,

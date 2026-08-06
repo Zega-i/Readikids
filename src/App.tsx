@@ -24,6 +24,7 @@ import type { ScreeningResult } from "./companion/CompanionDashboard";
 import { buildReferralReportPdf } from "./referral/reportPdf";
 
 import ChildProfileManager from "./companion/ChildProfileManager";
+import RiwayatLaporan from "./companion/RiwayatLaporan";
 import type { ChildProfile } from "./types/telemetry";
 
 // Pipeline nyata (menggantikan data dummy)
@@ -33,7 +34,7 @@ import { listChildProfiles } from "./profiles/childProfileService";
 
 export default function App() {
   // Tambahkan "sungai-bunyi" ke tipe currentScreen
-  const [currentScreen, setCurrentScreen] = useState<"landing" | "consent" | "map" | "hutan-huruf" | "hutan-selesai" | "sungai-bunyi" | "sungai-selesai" | "bukit-angka" | "bukit-selesai" | "penutup" | "cilo-menulis" | "dashboard-pendamping" | "beranda-pendamping" | "kelola">("landing");
+  const [currentScreen, setCurrentScreen] = useState<"landing" | "consent" | "map" | "hutan-huruf" | "hutan-selesai" | "sungai-bunyi" | "sungai-selesai" | "bukit-angka" | "bukit-selesai" | "penutup" | "cilo-menulis" | "dashboard-pendamping" | "beranda-pendamping" | "kelola" | "riwayat">("landing");
   const [activeProfile, setActiveProfile] = useState<ChildProfile | null>(null);
   const [currentWorldIndex, setCurrentWorldIndex] = useState(0);
 
@@ -43,6 +44,8 @@ export default function App() {
   const [bukitData, setBukitData] = useState<NumberLineTrialEvent[] | null>(null);
   const [runStartedAt, setRunStartedAt] = useState<number | null>(null);
   const [latestResult, setLatestResult] = useState<ScreeningResult | null>(null);
+  // Tambahkan state untuk mengingat sesi mana yang sedang dibuka di dashboard-pendamping
+  const [viewingSessionId, setViewingSessionId] = useState<string | null>(null);
   const [cooldownOverrideReason, setCooldownOverrideReason] = useState<string | null>(null);
 
   // Daftar profil anak nyata dari IndexedDB (menggantikan data hardcoded).
@@ -219,6 +222,13 @@ export default function App() {
         <CompanionDashboard
           activeProfile={activeProfile}
           fetchLatestResult={async (profileId) => {
+            // Jika ada sessionId yang spesifik sedang dibuka (dari riwayat)
+            if (viewingSessionId) {
+              const { getAllScreeningResults } = await import("./companion/dashboardData");
+              const results = await getAllScreeningResults(profileId);
+              return results.find(r => r.sessionId === viewingSessionId) || null;
+            }
+
             // Hasil dari sesi yang baru saja dimainkan (di memori) bila ada,
             // dan pastikan hasil in-memory tersebut milik profil yang sedang aktif.
             if (latestResult && latestResult.childName === activeProfile.pseudonym) {
@@ -226,7 +236,10 @@ export default function App() {
             }
             return getLatestScreeningResult(profileId);
           }}
-          onStartNext={() => setCurrentScreen("beranda-pendamping")}
+          onStartNext={() => {
+            setViewingSessionId(null);
+            setCurrentScreen("beranda-pendamping");
+          }}
           onSavePDF={async (result) => {
             try {
               const pdfBytes = await buildReferralReportPdf({
@@ -244,7 +257,8 @@ export default function App() {
                 history: [],
                 plan: result.plan
               });
-              const blob = new Blob([pdfBytes], { type: "application/pdf" });
+              // Cast pdfBytes to any or ArrayBuffer to satisfy Blob constructor
+              const blob = new Blob([pdfBytes as any], { type: "application/pdf" });
               const url = URL.createObjectURL(blob);
 
               const link = document.createElement("a");
@@ -278,11 +292,25 @@ export default function App() {
             beginNewRun(override?.reason ?? null);
             setCurrentScreen("map");
           }}
-          onOpenLatestStory={() => setCurrentScreen("dashboard-pendamping")}
-          onOpenHistory={() => alert("Fitur Riwayat Segera Hadir")}
+          onOpenLatestStory={() => {
+            setViewingSessionId(null);
+            setCurrentScreen("dashboard-pendamping");
+          }}
+          onOpenHistory={() => setCurrentScreen("riwayat")}
           onOpenManage={() => setCurrentScreen("kelola")}
           onAddChild={() => setCurrentScreen("consent")}
           onToLanding={() => setCurrentScreen("landing")}
+        />
+      )}
+
+      {currentScreen === "riwayat" && activeProfile && (
+        <RiwayatLaporan
+          activeProfile={activeProfile}
+          onBack={() => setCurrentScreen("beranda-pendamping")}
+          onOpenResult={(sessionId) => {
+            setViewingSessionId(sessionId);
+            setCurrentScreen("dashboard-pendamping");
+          }}
         />
       )}
 
