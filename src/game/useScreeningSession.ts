@@ -1,4 +1,9 @@
 /**
+ * ⚠️ STATUS: JALUR PROTOTIPE LAMA — TIDAK AKTIF. Tidak di-import di mana pun
+ * (bukan oleh `App.tsx`). Alur produksi memakai game ber-seed di
+ * `src/game/HutanHuruf|SungaiBunyi|BukitAngka/index.tsx`. Disimpan sebagai
+ * referensi mesin headless; jangan dijadikan acuan perilaku aplikasi live.
+ *
  * useScreeningSession — MESIN SESI SKRINING TANPA UI (headless).
  *
  * Seluruh logika sesi hidup di sini: urutan trial, state machine layar,

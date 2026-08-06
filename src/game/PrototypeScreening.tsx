@@ -1,4 +1,8 @@
 /**
+ * ⚠️ STATUS: JALUR PROTOTIPE LAMA — TIDAK AKTIF. Tidak dirender di mana pun
+ * (`App.tsx` tak merujuknya). Alur produksi memakai game ber-seed di
+ * `src/game/HutanHuruf|SungaiBunyi|BukitAngka/index.tsx`.
+ *
  * Kid Mode — LAPISAN PRESENTASI untuk mesin sesi useScreeningSession.
  *
  * Komponen ini HANYA merender & meneruskan interaksi; seluruh logika

@@ -34,6 +34,19 @@ export type Trial =
 const V_PROMPT = 'Mana yang sama seperti ini?';
 const P_PROMPT = 'Huruf apa yang bunyinya seperti itu?';
 
+/**
+ * ⚠️ STATUS: `DEFAULT_TRIALS` adalah SET SOAL FIXED dari JALUR PROTOTIPE LAMA.
+ * Hanya dikonsumsi `useScreeningSession.ts` (headless) + `PrototypeScreening.tsx`,
+ * yang KEDUANYA TIDAK di-wire ke aplikasi live (`App.tsx` tak merujuknya).
+ *
+ * Alur PRODUKSI memakai generator TRIAL BER-SEED di masing-masing game
+ * (`src/game/HutanHuruf|SungaiBunyi|BukitAngka/index.tsx`): komposisi
+ * terstandardisasi TAPI urutan diacak ulang tiap sesi (`sessionSeed` baru).
+ *
+ * JANGAN menyimpulkan dari daftar fixed di bawah bahwa "sesi 2 tak diacak
+ * ulang" — itu keliru; randomisasi antar-sesi ada di generator tiap game.
+ * (Catatan: `LINE_CORRECT_TOLERANCE` di bawah TETAP dipakai alur live.)
+ */
 export const DEFAULT_TRIALS: Trial[] = [
   // — Huruf Ajaib (visual) —
   { kind: 'choice', gameId: 'visual', target: 'a', options: ['e', 'a', 'o', 'u'], isReversal: false, prompt: V_PROMPT, tts: 'Mana yang sama seperti huruf ini? Sentuh ubinnya!' },
@@ -70,5 +83,9 @@ export const GAME_EMOJI: Record<GameId, string> = {
 
 export const CHEERS = ['Ayo lanjut! 🎈', 'Terus semangat! 🌈', 'Satu lagi yuk! 🚀', 'Kamu keren! ✨'];
 
-/** NLEE ≤ 10% dianggap jawaban benar untuk metrik akurasi internal. */
+/**
+ * NLEE ≤ 10% dianggap jawaban benar untuk metrik akurasi internal.
+ * CATATAN: konstanta ini AKTIF — dipakai `resultsPipeline.ts` (alur live),
+ * bukan bagian dari jalur prototipe `DEFAULT_TRIALS`.
+ */
 export const LINE_CORRECT_TOLERANCE = 10;
