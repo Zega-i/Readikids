@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { speak } from "../../utils/tts";
 
 // 1. Maskot Cilo Asli
 export const Cilo = (): JSX.Element => {
@@ -168,13 +169,9 @@ export const VisualGame = ({ onComplete, onBack }: VisualGameProps): JSX.Element
     return () => window.removeEventListener("resize", updateStageDimensions);
   }, [updateStageDimensions]);
 
+  // Bacakan instruksi lewat util speak() yang sama dengan game lain (suara seragam).
   const handleAudioInstruction = () => {
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance("Cari kembaran huruf ini, yuk!");
-      utterance.lang = "id-ID";
-      window.speechSynthesis.speak(utterance);
-    }
+    void speak("Cari kembaran huruf ini, yuk!", { lang: "id-ID" });
   };
 
   const handlePointerDownAnswer = (

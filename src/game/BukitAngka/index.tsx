@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { speak } from "../../utils/tts";
 
 // ─── Maskot Cilo ──────────────────────────────────────────────────────────────
 export const Cilo = (): JSX.Element => (
@@ -241,12 +242,9 @@ export const NumberLineGame = ({ onComplete, onBack }: NumberLineGameProps): JSX
     }, 500);
   };
 
+  // Bacakan instruksi lewat util speak() yang sama (suara seragam antar game).
   const handleAudio = () => {
-    if (!("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(`Sentuh di mana letak angka ${currentTarget}`);
-    u.lang = "id-ID";
-    window.speechSynthesis.speak(u);
+    void speak(`Sentuh di mana letak angka ${currentTarget}`, { lang: "id-ID" });
   };
 
   const markerPercent = (markerValue / RANGE_MAX) * 100;

@@ -155,7 +155,7 @@ export default function App() {
         <PetaDuniaAnak
           currentWorldIndex={currentWorldIndex}
           onEnterWorld={handleEnterWorld}
-          onBackToConsent={() => setCurrentScreen("beranda-pendamping")}
+          onBackToDashboard={() => setCurrentScreen("beranda-pendamping")}
         />
       )}
 

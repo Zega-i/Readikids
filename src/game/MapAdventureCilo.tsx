@@ -75,14 +75,14 @@ const worldsData: WorldStage[] = [
 
 interface PetaDuniaAnakProps {
   onEnterWorld?: (worldId: string) => void;
-  onBackToConsent?: () => void;
+  onBackToDashboard?: () => void;
   /** Index dunia aktif (Default: 0 = Hutan Huruf) */
   currentWorldIndex?: number;
 }
 
 export const PetaDuniaAnak = ({
   onEnterWorld,
-  onBackToConsent,
+  onBackToDashboard,
   currentWorldIndex = 0,
 }: PetaDuniaAnakProps): JSX.Element => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -179,10 +179,10 @@ export const PetaDuniaAnak = ({
         </div>
 
         <div className="flex flex-col items-end pr-3 lg:pr-5 mt-1">
-          {onBackToConsent && (
+          {onBackToDashboard && (
             <button
               type="button"
-              onClick={onBackToConsent}
+              onClick={onBackToDashboard}
               className="px-4 py-2 rounded-full font-black text-xs sm:text-sm transition-colors text-[#6b5a48] hover:text-[#4a3728] cursor-pointer"
             >
               ← Kembali

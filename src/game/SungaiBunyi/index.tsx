@@ -196,6 +196,12 @@ export const PhonicsGame = ({ onComplete, onBack }: PhonicsGameProps): JSX.Eleme
     return () => window.removeEventListener("resize", updateStageDimensions);
   }, [updateStageDimensions]);
 
+  // Tombol audio pojok atas: bacakan INSTRUKSI (seragam dengan Hutan & Bukit).
+  // Untuk mengulang suku kata, ada tombol "Dengar Lagi" terpisah.
+  const handleAudioInstruction = () => {
+    void speak("Dengar bunyinya, pilih hurufnya!", { lang: "id-ID" });
+  };
+
   const handleAnswer = (letter: string, e: React.PointerEvent<HTMLButtonElement>) => {
     if (isTransitioning || audioEndTimeRef.current === 0) return;
     const totalTimeMs = Math.round(performance.now() - audioEndTimeRef.current);
@@ -284,12 +290,12 @@ export const PhonicsGame = ({ onComplete, onBack }: PhonicsGameProps): JSX.Eleme
             </nav>
           </div>
 
-          {/* Tombol Suara — putar ulang stimulus */}
+          {/* Tombol Suara pojok atas — bacakan INSTRUKSI (bukan mengulang suku kata) */}
           <button
             type="button"
-            onClick={() => { void playStimulus(currentTrial.stimulus, true); }}
+            onClick={handleAudioInstruction}
             className="w-14 h-14 bg-[#ffd34d] rounded-full border-4 border-solid border-white flex items-center justify-center shadow-md active:scale-95 transition-transform cursor-pointer mt-1"
-            aria-label="Dengar ulang"
+            aria-label="Dengarkan petunjuk"
           >
             <span className="text-2xl">🔊</span>
           </button>
