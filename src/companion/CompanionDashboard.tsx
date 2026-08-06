@@ -101,7 +101,9 @@ interface CompanionDashboardProps {
   /** Fetch hasil skrining TERAKHIR anak dari Dexie. Kembalikan null bila belum ada. */
   fetchLatestResult: (profileId: string) => Promise<ScreeningResult | null>;
   onSavePDF?: (result: ScreeningResult) => void;
-  onStartNext?: () => void;   // "Mulai lagi" → W11 beranda / peta
+  onStartNext?: () => void;   // "Mulai lagi" / "Kembali"
+  /** Opsional: Teks kustom untuk tombol kembali (misal: "← Kembali ke Riwayat") */
+  nextButtonText?: string;
 }
 
 export default function CompanionDashboard({
@@ -109,6 +111,7 @@ export default function CompanionDashboard({
   fetchLatestResult,
   onSavePDF,
   onStartNext,
+  nextButtonText,
 }: CompanionDashboardProps): JSX.Element {
   const [result, setResult] = useState<ScreeningResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -219,7 +222,7 @@ export default function CompanionDashboard({
             </button>
             <button type="button" onClick={onStartNext}
               className="font-bold text-[#3e8e5a] text-sm cursor-pointer hover:underline">
-              Kembali ke Beranda →
+              {nextButtonText || "Kembali ke Beranda →"}
             </button>
           </div>
         </div>

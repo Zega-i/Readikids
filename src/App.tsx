@@ -237,9 +237,14 @@ export default function App() {
             return getLatestScreeningResult(profileId);
           }}
           onStartNext={() => {
+            if (viewingSessionId) {
+              setCurrentScreen("riwayat");
+            } else {
+              setCurrentScreen("beranda-pendamping");
+            }
             setViewingSessionId(null);
-            setCurrentScreen("beranda-pendamping");
           }}
+          nextButtonText={viewingSessionId ? "← Kembali ke Riwayat" : undefined}
           onSavePDF={async (result) => {
             try {
               const pdfBytes = await buildReferralReportPdf({
