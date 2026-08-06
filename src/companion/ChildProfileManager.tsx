@@ -20,6 +20,8 @@ interface ChildProfileManagerProps {
   onBack?: () => void;
   /** Bertambah setiap kali profil baru dibuat — memicu reload daftar. */
   refreshKey: number;
+  /** Dipanggil setelah berhasil menghapus suatu profil */
+  onProfileDeleted?: () => void;
 }
 
 export default function ChildProfileManager({
@@ -27,6 +29,7 @@ export default function ChildProfileManager({
   onAddChild,
   onBack,
   refreshKey,
+  onProfileDeleted,
 }: ChildProfileManagerProps) {
   const [profiles, setProfiles] = useState<ChildProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,6 +63,7 @@ export default function ChildProfileManager({
     await deleteChildProfile(id);
     refreshProfileList();
     setConfirmDeleteId(null);
+    onProfileDeleted?.();
   };
 
   return (
@@ -91,8 +95,8 @@ export default function ChildProfileManager({
       </header>
 
       {/* Content */}
-      <div className="flex-1 max-w-3xl w-full mx-auto px-6 py-8">
-        <div className="bg-white rounded-3xl shadow-[0px_8px_24px_rgba(74,55,40,0.08)] p-8">
+      <div className="flex-1 max-w-[1280px] w-full mx-auto px-8 py-8">
+        <div className="bg-white rounded-3xl shadow-[0px_8px_24px_rgba(74,55,40,0.08)] p-8 max-w-2xl">
           <div className="mb-6">
             <h1 className="font-black text-[#4a3728] text-2xl">Pilih Anak</h1>
             <p className="font-bold text-[#6b5a48] text-sm mt-1">
@@ -197,6 +201,14 @@ export default function ChildProfileManager({
           )}
         </div>
       </div>
+
+      {/* Strip disclaimer — hardcode */}
+      <footer className="bg-[#f3e9d7] py-3.5 px-6 shrink-0">
+        <p className="font-bold text-[#6b5a48] text-[13px] text-center max-w-4xl mx-auto">
+          100% tersimpan di perangkat ini · tanpa akun · ReadiKids adalah skrining awal,
+          bukan alat diagnosis — kepastian hanya dari profesional.
+        </p>
+      </footer>
     </main>
   );
 }

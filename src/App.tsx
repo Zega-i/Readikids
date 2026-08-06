@@ -287,19 +287,32 @@ export default function App() {
       )}
 
       {currentScreen === "kelola" && (
-        <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-          <ChildProfileManager
-            refreshKey={refreshKey}
-            onSelect={(p) => {
-              setActiveProfile(p);
-              setLatestResult(null);
-              void refreshProfiles();
+        <ChildProfileManager
+          refreshKey={refreshKey}
+          onSelect={(p) => {
+            setActiveProfile(p);
+            setLatestResult(null);
+            void refreshProfiles();
+            setCurrentScreen("beranda-pendamping");
+          }}
+          onProfileDeleted={() => {
+            void refreshProfiles().then(profiles => {
+              if (profiles.length === 0) {
+                 setActiveProfile(null);
+              } else if (activeProfile && !profiles.find(p => p.id === activeProfile.id)) {
+                 setActiveProfile(profiles[0]);
+              }
+            });
+          }}
+          onAddChild={() => setCurrentScreen("consent")}
+          onBack={() => {
+            if (allProfiles.length === 0) {
+              setCurrentScreen("landing");
+            } else {
               setCurrentScreen("beranda-pendamping");
-            }}
-            onAddChild={() => setCurrentScreen("consent")}
-            onBack={() => setCurrentScreen("beranda-pendamping")}
-          />
-        </div>
+            }
+          }}
+        />
       )}
 
       {currentScreen === "sungai-bunyi" && (
