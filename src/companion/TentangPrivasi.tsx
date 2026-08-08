@@ -25,9 +25,9 @@ const Poin = ({ icon, children }: { icon: string; children: React.ReactNode }): 
 
 export const TentangPrivasi = ({ onBack }: TentangPrivasiProps): JSX.Element => {
   return (
-    <main className="relative w-full min-h-[100dvh] font-nunito bg-[linear-gradient(180deg,#bfe5f5_0%,#eaf7e0_100%)] flex flex-col">
-      {/* Navbar — konsisten dengan Beranda */}
-      <header className="bg-white h-14 flex items-center px-6 shrink-0 shadow-sm">
+    <main className="relative w-full min-h-[100dvh] font-nunito flex flex-col bg-[#fff6e9] lg:bg-[linear-gradient(180deg,#bfe5f5_0%,#eaf7e0_100%)]">
+      {/* Navbar — hanya desktop (HP pakai back button melayang, lihat bawah) */}
+      <header className="hidden lg:flex bg-white h-14 items-center px-4 lg:px-6 shrink-0 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 relative flex items-center justify-center shrink-0">
             <div className="w-full h-full transform scale-[0.12] origin-top-left -ml-1 -mt-1">
@@ -50,6 +50,16 @@ export const TentangPrivasi = ({ onBack }: TentangPrivasiProps): JSX.Element => 
       {/* Konten */}
       <div className="flex-1 overflow-y-auto px-5 sm:px-8 py-7">
         <div className="max-w-2xl mx-auto flex flex-col gap-5">
+          {/* Back button melayang — hanya HP (desktop pakai navbar atas) */}
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Kembali"
+            className="lg:hidden w-11 h-11 rounded-full bg-white shadow-[0px_2px_8px_rgba(74,55,40,0.12)] flex items-center justify-center active:scale-95 transition-transform cursor-pointer"
+          >
+            <span className="font-black text-2xl text-[#4a3728] leading-none -mt-0.5">←</span>
+          </button>
+
           <div>
             <h1 className="font-black text-[#4a3728] text-3xl sm:text-4xl">Tentang &amp; Privasi 🌿</h1>
             <p className="font-bold text-[#6b5a48] text-base sm:text-lg mt-2">
@@ -117,10 +127,11 @@ export const TentangPrivasi = ({ onBack }: TentangPrivasiProps): JSX.Element => 
         </div>
       </div>
 
-      {/* Strip disclaimer — konsisten dengan layar hasil */}
-      <footer className="bg-[#f3e9d7] py-3.5 px-6 shrink-0">
-        <p className="font-bold text-[#6b5a48] text-[13px] text-center max-w-4xl mx-auto">
-          ReadiKids adalah skrining awal, bukan alat diagnosis — kepastian hanya dari profesional.
+      {/* Strip disclaimer — sama persis dengan Beranda (menempel di bawah) */}
+      <footer className="bg-[#f3e9d7] py-3 px-4 lg:py-3.5 lg:px-6 shrink-0">
+        <p className="font-bold text-[#6b5a48] text-center max-w-4xl mx-auto text-xs lg:text-[13px]">
+          <span className="lg:hidden">Skrining awal · bukan alat diagnosis</span>
+          <span className="hidden lg:inline">ReadiKids adalah skrining awal, bukan alat diagnosis — kepastian hanya dari profesional.</span>
         </p>
       </footer>
     </main>

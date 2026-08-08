@@ -141,7 +141,7 @@ export default function CompanionDashboard({
   if (!result) {
     return (
       <Shell profileName={activeProfile.pseudonym} profileAge={activeProfile.ageYears}>
-        <div className="flex flex-col items-center justify-center text-center h-[480px] gap-4 px-8">
+        <div className="flex flex-col items-center justify-center text-center h-[480px] gap-4 px-4 lg:px-8">
           <span className="text-6xl">🌱</span>
           <h2 className="font-black text-[#4a3728] text-2xl">Belum ada cerita</h2>
           <p className="font-bold text-[#8a7a66] text-base max-w-md">
@@ -175,10 +175,102 @@ export default function CompanionDashboard({
       profileAge={result.childAgeYears}
       dateLabel={formatDate(result.endedAt)}
     >
-      <div className="px-8 py-6 grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-6">
+      {/* ═══════════ HP — scroll + ringkasan + aksi sticky ═══════════ */}
+      <div className="lg:hidden">
+        <div className="flex flex-col gap-4 px-4 py-5">
+
+          {/* Ringkasan hasil (status + cerita Cilo + pengamatan) */}
+          <div className="bg-white rounded-3xl rk-sticker p-5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5" style={{ background: badge.bg }}>
+                <span className="w-2.5 h-2.5 rounded-full" style={{ background: badge.dot }} />
+                <span className="font-black text-sm uppercase tracking-wide" style={{ color: badge.text }}>{badge.short}</span>
+              </div>
+              {plan.source === "local-template" && (
+                <span className="font-bold text-[#a98f6f] text-[11px] shrink-0">Laporan standar</span>
+              )}
+            </div>
+
+            <p className="font-black text-[#4a3728] text-lg mt-3">{LEVEL_HEADLINE[mainLevel]}</p>
+
+            <p className="font-black text-[#6b5a48] text-xs tracking-wider mt-4">KATA CILO…</p>
+            <blockquote className="font-black text-[#4a3728] text-xl leading-snug mt-2">“{plan.summary}”</blockquote>
+
+            <div className="h-px bg-[#f3e9d7] my-5" />
+
+            <p className="font-black text-[#6b5a48] text-xs tracking-wider">PENGAMATAN PER AREA</p>
+            <div className="flex flex-col gap-3 mt-3">
+              <DomainRow emoji="🔤" label="Baca-tulis" badge={dysBadge} />
+              <DomainRow emoji="🔢" label="Berhitung" badge={calBadge} />
+            </div>
+          </div>
+
+          {/* Misi rumah */}
+          <div className="bg-white rounded-3xl rk-sticker p-5">
+            <p className="font-black text-[#6b5a48] text-xs tracking-wider">MISI RUMAH MINGGU INI</p>
+            <ul className="flex flex-col gap-3 mt-4">
+              {plan.companionActivities.map((act, i) => (
+                <li key={i} className="flex items-start gap-3">
+                  <span className="mt-0.5 shrink-0 w-6 h-6 rounded-full bg-[#eaf7e0] flex items-center justify-center text-xs font-black">{i + 1}</span>
+                  <span className="font-bold text-[#4a3728] text-[15px] leading-snug">{act}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Saran tindak lanjut — hanya saat indikasi HIGH */}
+          {showReferral && plan.referralGuidance.length > 0 && (
+            <div className="bg-[#dff2f2] rounded-3xl p-5 border-2 border-[#2b8a8a]/30 shadow-[0px_5px_0px_#bfe0e0,0px_11px_16px_rgba(31,107,107,0.1)]">
+              <p className="font-black text-[#1f6b6b] text-xs tracking-wider">🩺 SARAN TINDAK LANJUT</p>
+              <ul className="flex flex-col gap-2.5 mt-4">
+                {plan.referralGuidance.map((g, i) => (
+                  <li key={i} className="flex items-start gap-2.5">
+                    <span className="mt-1.5 shrink-0 w-1.5 h-1.5 rounded-full bg-[#2b8a8a]" />
+                    <span className="font-bold text-[#1f6b6b] text-[15px] leading-snug">{g}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Skrining berikutnya — bisa dilipat (sekunder) */}
+          <details className="bg-white rounded-3xl rk-sticker p-5">
+            <summary className="flex items-center justify-between gap-2 cursor-pointer list-none">
+              <div>
+                <p className="font-black text-[#6b5a48] text-xs tracking-wider">SKRINING BERIKUTNYA</p>
+                <p className="font-black text-[#4a3728] text-base mt-1">Terbuka lagi {formatCooldownWindow(result.endedAt)}</p>
+              </div>
+              <span className="text-[#8a7a66] text-lg shrink-0">⌄</span>
+            </summary>
+            <div className="mt-3">
+              <div className="w-full h-2.5 rounded-full bg-[#f3e9d7] overflow-hidden">
+                <div className="h-full rounded-full bg-[#3e8e5a]" style={{ width: "32%" }} />
+              </div>
+              <p className="font-bold text-[#6b5a48] text-[13px] leading-snug mt-3">
+                Jeda 2–4 minggu menjaga hasil tetap jujur — anak tidak sekadar hafal permainannya.
+              </p>
+            </div>
+          </details>
+        </div>
+
+        {/* Bar aksi sticky */}
+        <div className="sticky bottom-0 bg-[#eaf7e0]/95 backdrop-blur border-t border-[#cfe0c4] px-4 py-3 flex items-center gap-4">
+          <button type="button" onClick={() => onSavePDF?.(result)}
+            className="flex-1 py-3 bg-[#3e8e5a] rounded-full rk-sticker-btn font-black text-white text-sm active:scale-95 transition-transform cursor-pointer">
+            📄 Simpan PDF
+          </button>
+          <button type="button" onClick={onStartNext}
+            className="font-black text-[#3e8e5a] text-sm whitespace-nowrap active:scale-95 transition-transform cursor-pointer shrink-0">
+            {nextButtonText || "Kembali →"}
+          </button>
+        </div>
+      </div>
+
+      {/* ═══════════ DESKTOP/WEB (tidak diubah) ═══════════ */}
+      <div className="hidden lg:grid px-4 py-5 lg:px-8 lg:py-6 lg:grid-cols-[1.1fr_1fr] gap-4 lg:gap-6">
 
         {/* ══ KOLOM KIRI — HASIL UTAMA ══ */}
-        <div className="bg-white rounded-3xl shadow-[0px_8px_24px_rgba(74,55,40,0.08)] p-7 flex flex-col">
+        <div className="bg-white rounded-3xl shadow-[0px_8px_24px_rgba(74,55,40,0.08)] p-5 lg:p-7 flex flex-col">
           {/* Badge kesimpulan */}
           <div className="flex items-center justify-between">
             <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5"
@@ -215,7 +307,7 @@ export default function CompanionDashboard({
           <div className="h-px bg-[#f3e9d7] my-6" />
 
           {/* Aksi */}
-          <div className="flex items-center gap-5 mt-auto">
+          <div className="flex items-center gap-3 lg:gap-5 mt-auto">
             <button type="button" onClick={() => onSavePDF?.(result)}
               className="px-6 py-3 bg-[#3e8e5a] rounded-full border-[3px] border-white shadow-md font-black text-white text-sm active:scale-95 transition-transform cursor-pointer">
               📄 Simpan Laporan (PDF)
@@ -228,10 +320,10 @@ export default function CompanionDashboard({
         </div>
 
         {/* ══ KOLOM KANAN ══ */}
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4 lg:gap-6">
 
           {/* Misi Rumah — companionActivities (string[] utuh, tanpa kotak menit) */}
-          <div className="bg-white rounded-3xl shadow-[0px_8px_24px_rgba(74,55,40,0.08)] p-7">
+          <div className="bg-white rounded-3xl shadow-[0px_8px_24px_rgba(74,55,40,0.08)] p-5 lg:p-7">
             <p className="font-black text-[#6b5a48] text-xs tracking-wider">MISI RUMAH MINGGU INI</p>
             <ul className="flex flex-col gap-3 mt-4">
               {plan.companionActivities.map((act, i) => (
@@ -246,9 +338,9 @@ export default function CompanionDashboard({
           </div>
 
           {/* Skrining berikutnya — dihitung dari endedAt + cooldown */}
-          <div className="bg-white rounded-3xl shadow-[0px_8px_24px_rgba(74,55,40,0.08)] p-7">
+          <div className="bg-white rounded-3xl shadow-[0px_8px_24px_rgba(74,55,40,0.08)] p-5 lg:p-7">
             <p className="font-black text-[#6b5a48] text-xs tracking-wider">SKRINING BERIKUTNYA</p>
-            <p className="font-black text-[#4a3728] text-2xl mt-2">
+            <p className="font-black text-[#4a3728] text-xl lg:text-2xl mt-2">
               Terbuka lagi {formatCooldownWindow(result.endedAt)}
             </p>
             <div className="w-full h-2.5 rounded-full bg-[#f3e9d7] mt-4 overflow-hidden">
@@ -261,7 +353,7 @@ export default function CompanionDashboard({
 
           {/* Saran Tindak Lanjut — HANYA saat HIGH (referralGuidance) */}
           {showReferral && plan.referralGuidance.length > 0 && (
-            <div className="bg-[#dff2f2] rounded-3xl shadow-[0px_8px_24px_rgba(31,107,107,0.1)] p-7 border-2 border-[#2b8a8a]/30">
+            <div className="bg-[#dff2f2] rounded-3xl shadow-[0px_8px_24px_rgba(31,107,107,0.1)] p-5 lg:p-7 border-2 border-[#2b8a8a]/30">
               <p className="font-black text-[#1f6b6b] text-xs tracking-wider">🩺 SARAN TINDAK LANJUT</p>
               <ul className="flex flex-col gap-2.5 mt-4">
                 {plan.referralGuidance.map((g, i) => (
@@ -297,9 +389,24 @@ const DomainRow = ({ emoji, label, badge }: { emoji: string; label: string; badg
 const Shell = ({ children, profileName, profileAge, dateLabel }: {
   children: React.ReactNode; profileName?: string; profileAge?: number; dateLabel?: string;
 }) => (
-  <main className="relative w-full min-h-[100dvh] font-nunito bg-[linear-gradient(180deg,#bfe5f5_0%,#eaf7e0_100%)] flex flex-col">
-    {/* Navbar */}
-    <header className="bg-white h-14 flex items-center px-6 shrink-0 shadow-sm">
+  <main className="relative w-full min-h-[100dvh] font-nunito flex flex-col bg-[#fff6e9] lg:bg-[linear-gradient(180deg,#bfe5f5_0%,#eaf7e0_100%)]">
+    {/* Header HP — "Cerita Petualangan" + note + logo Cilo (mengikuti mockup) */}
+    <header className="lg:hidden bg-[#fbe9d5] px-5 pt-6 pb-5 shrink-0 flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <h1 className="font-black text-[#4a3728] text-3xl leading-[1.05]">Cerita<br />Petualangan</h1>
+        {(profileName || dateLabel) && (
+          <p className="font-bold text-[#8a7a66] text-xs mt-2 truncate">
+            {[profileName, profileAge ? `${profileAge} th` : null, dateLabel].filter(Boolean).join(" · ")}
+          </p>
+        )}
+      </div>
+      <div className="shrink-0 w-[68px] h-[82px] relative -mt-1">
+        <div className="absolute top-0 left-0 scale-[0.23] origin-top-left"><CiloKancil /></div>
+      </div>
+    </header>
+
+    {/* Navbar — desktop */}
+    <header className="hidden lg:flex bg-white h-14 items-center px-4 lg:px-6 shrink-0 shadow-sm">
       <div className="flex items-center gap-2">
         {/* Cilo Bear Mini Logo */}
         <div className="w-8 h-8 relative flex items-center justify-center shrink-0">
@@ -309,7 +416,7 @@ const Shell = ({ children, profileName, profileAge, dateLabel }: {
         </div>
         <span className="font-black text-[#4a3728] text-lg tracking-tight">ReadiKids</span>
       </div>
-      <div className="ml-auto flex items-center gap-5">
+      <div className="ml-auto flex items-center gap-2 lg:gap-5">
         {dateLabel && <span className="font-bold text-[#6b5a48] text-sm">{dateLabel}</span>}
         {profileName && (
           <span className="font-bold text-[#6b5a48] text-sm">
@@ -322,10 +429,11 @@ const Shell = ({ children, profileName, profileAge, dateLabel }: {
     {/* Konten */}
     <div className="flex-1 max-w-[1280px] w-full mx-auto">{children}</div>
 
-    {/* Strip disclaimer — HARDCODE, selalu tampil */}
-    <footer className="bg-[#f3e9d7] py-3.5 px-6 shrink-0 mt-auto">
-      <p className="font-bold text-[#6b5a48] text-[13px] text-center max-w-4xl mx-auto">
-        ⚠ {SAFETY_DISCLAIMER}
+    {/* Strip disclaimer — HARDCODE, selalu tampil (ringkas di HP, lengkap di desktop) */}
+    <footer className="bg-[#f3e9d7] py-2.5 px-4 lg:py-3.5 lg:px-6 shrink-0 mt-auto">
+      <p className="font-bold text-[#6b5a48] text-center max-w-4xl mx-auto leading-snug text-[11px] lg:text-[13px]">
+        <span className="lg:hidden">⚠ Skrining awal, bukan diagnosis — kepastian dari profesional.</span>
+        <span className="hidden lg:inline">⚠ {SAFETY_DISCLAIMER}</span>
       </p>
     </footer>
   </main>

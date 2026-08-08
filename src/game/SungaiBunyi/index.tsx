@@ -94,8 +94,6 @@ function generateTrials(seed: string): PhonicsTrialConfig[] {
   return shuffle(blocks, rng).flatMap((b) => shuffle(b, rng));
 }
 
-const BASE_CANVAS = { w: 1280, h: 800 };
-
 interface PhonicsGameProps {
   onComplete?: (telemetry: PhonicsTrialEvent[]) => void;
   onBack?: () => void;
@@ -143,7 +141,6 @@ export const PhonicsGame = ({ onComplete, onBack }: PhonicsGameProps): JSX.Eleme
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  const [stageScale, setStageScale] = useState(1);
   const [viewportSize, setViewportSize] = useState({ w: 1280, h: 800 });
 
   const telemetryDataRef = useRef<PhonicsTrialEvent[]>([]);
@@ -181,13 +178,8 @@ export const PhonicsGame = ({ onComplete, onBack }: PhonicsGameProps): JSX.Eleme
     return () => clearTimeout(t);
   }, [currentTrialIndex, currentTrial, sessionSeed, playStimulus]);
 
-  // Panggung berskala — IDENTIK dengan VisualGame yang sudah jalan
   const updateStageDimensions = useCallback(() => {
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const scale = Math.min(vw / BASE_CANVAS.w, vh / BASE_CANVAS.h);
-    setViewportSize({ w: vw, h: vh });
-    setStageScale(scale);
+    setViewportSize({ w: window.innerWidth, h: window.innerHeight });
   }, []);
 
   useEffect(() => {
@@ -222,7 +214,7 @@ export const PhonicsGame = ({ onComplete, onBack }: PhonicsGameProps): JSX.Eleme
       deviceInfo: {
         viewportWidth: viewportSize.w,
         viewportHeight: viewportSize.h,
-        effectiveScale: stageScale,
+        effectiveScale: typeof window !== "undefined" ? window.devicePixelRatio : 1,
         pointerType: e.pointerType || "mouse",
       },
     };
@@ -240,133 +232,102 @@ export const PhonicsGame = ({ onComplete, onBack }: PhonicsGameProps): JSX.Eleme
   };
 
   return (
-    // Kerangka IDENTIK dengan VisualGame: flex center + transformOrigin center
-    <main className="w-screen h-screen h-[100dvh] bg-[linear-gradient(180deg,rgba(214,240,251,1)_0%,rgba(88,183,232,1)_100%)] relative overflow-hidden select-none font-nunito flex items-center justify-center text-[#4a3728]">
-      <div
-        style={{
-          width: BASE_CANVAS.w,
-          height: BASE_CANVAS.h,
-          transform: `scale(${stageScale})`,
-          transformOrigin: "center center",
-        }}
-        className="relative shrink-0 overflow-hidden"
-      >
-        {/* 1. Header */}
-        <header className="absolute top-6 left-0 w-full px-10 flex items-start justify-between z-20">
-          {/* Tombol Kembali */}
+    <main className="w-full h-[100dvh] bg-[linear-gradient(180deg,rgba(214,240,251,1)_0%,rgba(88,183,232,1)_100%)] relative overflow-hidden select-none font-nunito flex flex-col text-[#4a3728]">
+
+      {/* Header */}
+      <header className="shrink-0 px-4 pt-4">
+        <div className="flex items-center justify-between gap-2">
           <button
             type="button"
             onClick={onBack}
-            className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-md hover:bg-slate-50 active:scale-95 transition-transform cursor-pointer border-2 border-white mt-1"
+            className="w-12 h-12 rounded-full bg-white rk-sticker flex items-center justify-center active:scale-95 transition-transform cursor-pointer shrink-0"
             aria-label="Kembali"
           >
-            <span className="font-black text-3xl text-[#4a3728] leading-none -mt-1">‹</span>
+            <span className="font-black text-2xl text-[#4a3728] leading-none -mt-0.5">‹</span>
           </button>
-
-          {/* Plang Judul & Indikator */}
-          <div className="flex flex-col items-center gap-2">
-            <div className="bg-[#c98a4b] px-9 py-2.5 rounded-2xl border-[3.5px] border-solid border-[#8a5a2b] shadow-md">
-              <h1 className="font-black text-[#fff6e9] text-2xl tracking-wider uppercase">
-                SUNGAI BUNYI
-              </h1>
-            </div>
-            <nav className="flex items-center gap-2.5 mt-0.5">
-              {levels.map((lvl, idx) => {
-                const isActive = idx === 1; // 1 = Sungai Bunyi
-                return (
-                  <div
-                    key={lvl.label}
-                    className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl border-3 shadow-sm transition-all ${
-                      isActive
-                        ? "bg-[#fff6e9] border-[#ffd34d] scale-105 shadow-md"
-                        : "bg-[#fff6e9]/60 border-white/80 opacity-60"
-                    }`}
-                    title={lvl.label}
-                  >
-                    <span>{lvl.emoji}</span>
-                  </div>
-                );
-              })}
-            </nav>
+          <div className="bg-[#c98a4b] px-5 py-2 rounded-2xl border-[3px] border-[#8a5a2b] shadow-[0px_4px_0px_#8a5a2b,0px_9px_12px_rgba(74,55,40,0.2)]">
+            <h1 className="font-black text-[#fff6e9] text-lg tracking-wider uppercase">SUNGAI BUNYI</h1>
           </div>
-
-          {/* Tombol Suara pojok atas — bacakan INSTRUKSI (bukan mengulang suku kata) */}
           <button
             type="button"
             onClick={handleAudioInstruction}
-            className="w-14 h-14 bg-[#ffd34d] rounded-full border-4 border-solid border-white flex items-center justify-center shadow-md active:scale-95 transition-transform cursor-pointer mt-1"
+            className="w-12 h-12 rounded-full bg-[#ffd34d] rk-sticker flex items-center justify-center active:scale-95 transition-transform cursor-pointer shrink-0"
             aria-label="Dengarkan petunjuk"
           >
             <span className="text-2xl">🔊</span>
           </button>
-        </header>
-
-        {/* 2. Area Stimulus (Cilo + Balon + Lonceng + Dengar Lagi) */}
-        <section className="absolute top-[230px] left-0 w-full px-16 flex items-center justify-center gap-16 z-10">
-          {/* Cilo & Balon */}
-          <div className="flex items-center gap-6">
-            <div className="relative w-[200px] h-[252px] flex items-center justify-center shrink-0">
-              <div className="absolute transform scale-75 origin-center">
-                <Cilo />
+        </div>
+        <nav className="flex items-center justify-center gap-2 mt-3">
+          {levels.map((lvl, idx) => {
+            const isActive = idx === 1;
+            return (
+              <div
+                key={lvl.label}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg border-2 ${
+                  isActive ? "bg-[#fff6e9] border-[#ffd34d] shadow-sm" : "bg-[#fff6e9]/50 border-white/70 opacity-55"
+                }`}
+                title={lvl.label}
+              >
+                <span>{lvl.emoji}</span>
               </div>
-            </div>
-            <div className="relative bg-white px-7 py-6 rounded-[30px] shadow-[0px_6px_16px_rgba(74,55,40,0.12)] max-w-[320px]">
-              <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-0 h-0 border-t-[10px] border-t-transparent border-r-[14px] border-r-white border-b-[10px] border-b-transparent" />
-              <p className="font-black text-[#4a3728] text-2xl leading-snug whitespace-pre-line">
-                {ciloText}
-              </p>
-            </div>
-          </div>
+            );
+          })}
+        </nav>
+      </header>
 
-          {/* Lonceng + tombol dengar lagi */}
-          <div className="flex flex-col items-center gap-4 shrink-0">
-            <div
-              className="w-[230px] h-[210px] bg-white rounded-[44px] border-[7px] border-solid border-white shadow-[0px_8px_20px_rgba(74,55,40,0.18)] flex items-center justify-center"
-              style={{ transform: isPlaying ? "scale(1.06)" : "scale(1)", transition: "transform 0.2s" }}
-            >
-              <span className="text-[110px] leading-none">🔔</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => { void playStimulus(currentTrial.stimulus, true); }}
-              className="px-8 py-3 bg-[#ffd34d] rounded-full border-[5px] border-solid border-white shadow-md font-black text-[#4a3728] text-lg active:scale-95 transition-transform cursor-pointer"
-            >
-              ▶ dengar lagi
-            </button>
-          </div>
-        </section>
+      {/* Konten utama */}
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-5 px-5">
 
-        {/* 3. Pod Jawaban */}
-        <section className="absolute top-[525px] left-0 w-full flex items-center justify-center gap-14 z-10">
+        {/* Cilo + balon */}
+        <div className="w-full max-w-md flex items-center gap-3">
+          <div className="relative w-[92px] h-[110px] shrink-0">
+            <div className="absolute top-0 left-0 scale-[0.31] origin-top-left"><Cilo /></div>
+          </div>
+          <div className="relative flex-1 bg-white rounded-[24px] rk-sticker px-5 py-4">
+            <div className="absolute -left-2.5 top-1/2 -translate-y-1/2 w-0 h-0 border-t-[9px] border-t-transparent border-r-[12px] border-r-white border-b-[9px] border-b-transparent" />
+            <p className="font-black text-[#4a3728] text-lg leading-snug whitespace-pre-line">{ciloText}</p>
+          </div>
+        </div>
+
+        {/* Lonceng + dengar lagi */}
+        <div className="flex flex-col items-center gap-3">
+          <div
+            className="w-40 h-36 bg-white rounded-[36px] border-[6px] border-white shadow-[0px_8px_0px_#cfe6f2,0px_16px_20px_rgba(74,55,40,0.15)] flex items-center justify-center"
+            style={{ transform: isPlaying ? "scale(1.05)" : "scale(1)", transition: "transform 0.2s" }}
+          >
+            <span className="text-[92px] leading-none">🔔</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => { void playStimulus(currentTrial.stimulus, true); }}
+            className="px-6 py-2.5 bg-[#ffd34d] rounded-full border-[4px] border-white shadow-[0px_4px_0px_#e8b84d,0px_9px_12px_rgba(74,55,40,0.15)] font-black text-[#4a3728] text-base active:scale-95 transition-transform cursor-pointer"
+          >
+            ▶ dengar lagi
+          </button>
+        </div>
+
+        {/* Pod jawaban — statis selama trial */}
+        <div className="w-full max-w-md flex items-center justify-center gap-4">
           {podOptions.map((letter, idx) => (
             <button
               key={`pod-${currentTrialIndex}-${idx}`}
               type="button"
               onPointerDown={(e) => handleAnswer(letter, e)}
               disabled={isTransitioning}
-              className="w-[136px] h-[136px] rounded-full border-[6px] border-solid border-white bg-[#fff6e9] shadow-[0px_8px_18px_rgba(74,55,40,0.18)] flex items-center justify-center transition-all duration-150 cursor-pointer active:scale-90 hover:scale-105 hover:bg-[#fff9f0] disabled:pointer-events-none"
+              className="w-[86px] h-[86px] rounded-full border-[5px] border-white bg-[#fff6e9] shadow-[0px_6px_0px_#e2d3bd,0px_12px_16px_rgba(74,55,40,0.15)] flex items-center justify-center cursor-pointer shrink-0 disabled:pointer-events-none"
               aria-label={`Pilih ${letter}`}
             >
-              <span className="font-black text-[#4a3728] text-5xl leading-none">
-                {letter}
-              </span>
+              <span className="font-black text-[#4a3728] text-4xl leading-none">{letter}</span>
             </button>
           ))}
-        </section>
-
-        {/* 4. Hint Bawah */}
-        <div className="absolute top-[715px] left-0 w-full text-center z-10">
-          <p className="font-bold text-[#2f5b23] text-lg tracking-wide">
-            boleh didengar berulang — semua pilihan boleh 🌱
-          </p>
         </div>
+      </div>
 
-        {/* 5. Footer */}
-        <footer className="absolute bottom-3 left-0 w-full text-center shrink-0 z-10">
-          <p className="font-bold text-[#2f5b23]/70 text-xs">
-            ReadiKids · Skrining Dini
-          </p>
-        </footer>
+      {/* Hint */}
+      <div className="shrink-0 pb-7 px-5 text-center">
+        <p className="font-bold text-[#2f5b23] text-sm tracking-wide">
+          boleh didengar berulang — semua pilihan boleh 🌱
+        </p>
       </div>
     </main>
   );

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 
 // ─── Maskot Cilo ──────────────────────────────────────────────────────────────
 export const Cilo = (): JSX.Element => (
@@ -48,9 +48,6 @@ export const CiloMenulisCerita = ({
 }: CiloMenulisCeritaProps): JSX.Element => {
   const [stageIndex, setStageIndex] = useState(0); // tahap aktif 0..2
   const [typedChars, setTypedChars] = useState(0);  // jumlah huruf yang sudah "ditulis"
-  const [showCursor, setShowCursor] = useState(true);
-
-  const [stageScale, setStageScale] = useState(1);
 
   const startTimeRef = useRef<number>(performance.now());
   const doneCalledRef = useRef(false);
@@ -65,23 +62,6 @@ export const CiloMenulisCerita = ({
     onDoneRef.current = onDone;
     minDurationRef.current = minDurationMs;
   });
-
-  // ── Panggung berskala (layar ini boleh center, tidak ada telemetri) ──
-  const updateScale = useCallback(() => {
-    const vw = window.innerWidth, vh = window.innerHeight;
-    setStageScale(Math.min(vw / 1280, vh / 800, 1));
-  }, []);
-  useEffect(() => {
-    updateScale();
-    window.addEventListener("resize", updateScale);
-    return () => window.removeEventListener("resize", updateScale);
-  }, [updateScale]);
-
-  // ── Kursor berkedip ──
-  useEffect(() => {
-    const t = setInterval(() => setShowCursor((s) => !s), 500);
-    return () => clearInterval(t);
-  }, []);
 
   // ── Progres tahap: jalankan proses NYATA SEKALI saat layar muncul ──
   // Dipicu sekali (deps []) — perubahan referensi callback dari App TIDAK
@@ -134,9 +114,6 @@ export const CiloMenulisCerita = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Progres bar isi mengikuti tahap (0→33→66→100)
-  const progressPct = stageIndex === 0 ? 25 : stageIndex === 1 ? 60 : 92;
-
   // Kalimat "cerita" yang diketik huruf demi huruf (efek Cilo menulis).
   // Nama anak dibuat dinamis berdasarkan prop childName.
   const previewText = `“${childName} lincah sekali di Bukit Angka!\nTapi di Hutan Huruf dia sering berhenti…`;
@@ -148,107 +125,68 @@ export const CiloMenulisCerita = ({
     return () => clearTimeout(t);
   }, [typedChars, previewText.length]);
 
-  const typed = previewText.slice(0, typedChars);
-
   return (
-    <main className="w-screen h-screen h-[100dvh] bg-[linear-gradient(180deg,rgba(255,235,208,1)_0%,rgba(255,246,233,1)_100%)] relative overflow-hidden select-none font-nunito flex items-center justify-center text-[#4a3728]">
-      <div
-        style={{ width: 1280, height: 800, transform: `scale(${stageScale})`, transformOrigin: "center center" }}
-        className="relative shrink-0 overflow-hidden"
-      >
-        {/* Judul */}
-        <div className="absolute left-0 w-full text-center px-8" style={{ top: 64 }}>
-          <h1 className="font-black text-[32px] leading-tight">
-            Cilo sedang menulis cerita {childName}…
-          </h1>
-          <p className="font-bold text-[#8a7a66] text-[15px] mt-2">
-            sebentar ya — setiap petualangan jadi satu cerita utuh untuk Anda
-          </p>
-        </div>
+    <main className="w-full h-[100dvh] bg-[linear-gradient(180deg,rgba(255,235,208,1)_0%,rgba(255,246,233,1)_100%)] relative overflow-hidden select-none font-nunito flex flex-col items-center text-[#4a3728]">
 
-        {/* Cilo + pena yang bergoyang (animasi menulis) */}
-        <div className="absolute" style={{ left: 180, top: 270 }}>
-          <div style={{ transform: "scale(0.71)", transformOrigin: "top left" }}>
-            <Cilo />
+      {/* Judul (beberapa baris) */}
+      <div className="shrink-0 text-center px-6 pt-9">
+        <h1 className="font-black text-2xl leading-tight">Cilo sedang menulis<br />ceritamu…</h1>
+        <p className="font-bold text-[#8a7a66] text-sm mt-2">untuk orangtua/wali 📖</p>
+      </div>
+
+      {/* Kertas cerita + Cilo di pojok kanan bawah */}
+      <div className="flex-1 min-h-0 w-full flex items-center justify-center px-6">
+        <div className="relative">
+          {/* Kilau ✨ — di LUAR kertas agar tidak terpotong */}
+          <span className="absolute z-10 text-xl animate-[twinkle_1.4s_ease-in-out_infinite]" style={{ left: -14, top: -12 }}>✨</span>
+          <span className="absolute z-10 text-base animate-[twinkle_1.8s_ease-in-out_infinite]" style={{ right: -8, top: 30 }}>✨</span>
+
+          {/* Kertas — kecil & memanjang ke bawah */}
+          <div className="relative bg-white rounded-[28px] shadow-[0px_10px_30px_rgba(74,55,40,0.12)] w-[236px] h-[320px] rotate-2 px-6 py-8">
+            {/* garis-garis kertas + baris cokelat yang sedang ditulis (diperpendek) */}
+            <div className="flex flex-col gap-[18px]">
+              {[86, 94, 78, 90, 72].map((w, i) => (
+                <div key={i} className="h-2.5 rounded-full bg-[#e8dfce]" style={{ width: `${w}%` }} />
+              ))}
+              <div className="relative h-2.5">
+                <div className="h-2.5 rounded-full bg-[#c98a4b] transition-all duration-100"
+                  style={{ width: Math.min(20 + typedChars * 2, 130) }} />
+                <span className="absolute -top-2 text-xl animate-[nib-bob_0.5s_ease-in-out_infinite]"
+                  style={{ left: Math.min(20 + typedChars * 2, 130) - 8 }}>✍️</span>
+              </div>
+            </div>
           </div>
-          {/* Pena ✏ bergoyang naik-turun seperti sedang menulis */}
-          <span
-            className="absolute text-4xl animate-[cilo-write_0.6s_ease-in-out_infinite]"
-            style={{ left: 172, top: 160 }}
-          >
-            ✏️
-          </span>
+
+          {/* Cilo mengintip dari pojok kanan bawah */}
+          <div className="absolute -bottom-3 -right-9 w-[118px] h-[142px] pointer-events-none">
+            <div className="absolute top-0 left-0 scale-[0.4] origin-top-left"><Cilo /></div>
+            <span className="absolute left-[68px] top-[90px] text-2xl rotate-[35deg]">✏️</span>
+          </div>
         </div>
+      </div>
 
-        {/* Kertas cerita */}
-        <div className="absolute bg-white rounded-3xl shadow-[0px_8px_24px_rgba(74,55,40,0.1)]"
-          style={{
-            left: 560, top: 190, width: 520, height: 380,
-            transform: "rotate(4deg)",
-            transformOrigin: "center center",
-          }}>
-          {/* garis-garis kertas (5 penuh + 1 terisi tinta cokelat) */}
-          {[224, 277, 331, 384, 437].map((y, i) => (
-            <div key={i} className="absolute rounded-full bg-[#e8dfce]"
-              style={{ left: 28, top: y - 190, width: 420, height: 9 }} />
-          ))}
-          {/* baris terakhir sedang ditulis — lebar mengikuti progres ketik */}
-          <div className="absolute rounded-full bg-[#c98a4b] transition-all duration-100"
-            style={{ left: 28, top: 491 - 190, width: 60 + typedChars * 3, height: 9, maxWidth: 336 }} />
-
-          {/* teks cerita yang diketik huruf demi huruf */}
-          <p className="absolute font-bold text-[#6b5a48] text-[18px] leading-relaxed whitespace-pre-line"
-            style={{ left: 46, top: 372 - 190, width: 380 }}>
-            {typed}
-            <span className={showCursor ? "opacity-100" : "opacity-0"}>▌</span>
-          </p>
-
-          {/* pena kecil ✍ di ujung baris */}
-          <span className="absolute text-2xl animate-[nib-bob_0.5s_ease-in-out_infinite] transition-all duration-100"
-            style={{
-              left: 28 + Math.min(60 + typedChars * 3, 336) - 10,
-              top: 477 - 190
-            }}>✍️</span>
-
-          {/* sparkle */}
-          <span className="absolute text-2xl animate-[twinkle_1.4s_ease-in-out_infinite]" style={{ left: -26, top: -20 }}>✨</span>
-          <span className="absolute text-base animate-[twinkle_1.8s_ease-in-out_infinite]" style={{ left: 544, top: 230 }}>✨</span>
-        </div>
-
-        {/* Jejak langkah Cilo (dots) — terisi mengikuti progres */}
-        <div className="absolute flex items-center gap-12" style={{ left: 400, top: 656 }}>
-          {Array.from({ length: 8 }).map((_, i) => {
-            const filled = i < Math.round((progressPct / 100) * 8);
-            return (
-              <span key={i}
-                className="rounded-[50%] transition-colors duration-300"
-                style={{ width: 16, height: 10, background: filled ? "#c98a4b" : "#e8dfce" }} />
-            );
-          })}
-        </div>
-
-        {/* Tiga kartu status tahap */}
-        <div className="absolute flex gap-6" style={{ left: 166, top: 696 }}>
+      {/* Checklist status — bertumpuk */}
+      <div className="shrink-0 w-full max-w-sm px-6">
+        <div className="bg-white rounded-3xl rk-sticker p-4 flex flex-col gap-2.5">
           {STAGES.map((s, i) => {
             const state = i < stageIndex ? "done" : i === stageIndex ? "active" : "pending";
             const label = state === "done" ? s.done : state === "active" ? s.active : s.pending;
             const color = state === "done" ? "#6dbb57" : state === "active" ? "#c98a4b" : "#8a7a66";
             return (
-              <div key={s.key}
-                className="bg-white rounded-2xl shadow-sm flex items-center justify-center px-5"
-                style={{ width: 300, height: 50 }}>
-                <span className="font-bold text-sm" style={{ color }}>{label}</span>
-              </div>
+              <span key={s.key} className="font-bold text-[15px]" style={{ color }}>{label}</span>
             );
           })}
         </div>
+      </div>
 
-        {/* Footer privasi */}
-        <div className="absolute left-0 w-full text-center" style={{ top: 768 }}>
-          <p className="font-bold text-[#a98f6f] text-xs">
-            hanya untuk pendamping · anak tidak melihat layar ini
-          </p>
-        </div>
+      {/* Spacer bawah agar checklist di tengah (jarak atas = bawah) */}
+      <div className="flex-1 min-h-0" />
+
+      {/* Footer */}
+      <div className="shrink-0 pt-3 pb-6 text-center px-6">
+        <p className="font-bold text-[#a98f6f] text-xs">
+          hanya untuk pendamping · anak tidak melihat layar ini
+        </p>
       </div>
 
       {/* Keyframes animasi */}

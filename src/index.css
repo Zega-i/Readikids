@@ -28,6 +28,26 @@
   }
 }
 
+/* ── Gaya "stiker" (tepi putih + lantai bawah tegas) — bahasa desain kartu.
+   Membuat kartu/tombol terasa bervolume & disengaja, bukan flat generik. ── */
+@layer components {
+  .rk-sticker {
+    border: 3px solid #ffffff;
+    box-shadow: 0 5px 0 #ebe0cf, 0 11px 16px rgba(74, 55, 40, 0.1);
+  }
+  .rk-sticker-gold {
+    border: 3px solid #ffffff;
+    box-shadow: 0 5px 0 #f0dfa0, 0 11px 16px rgba(74, 55, 40, 0.1);
+  }
+  .rk-sticker-btn {
+    border: 4px solid #ffffff;
+    box-shadow: 0 5px 0 #2f6f45, 0 10px 16px rgba(62, 142, 90, 0.28);
+  }
+  .rk-sticker-danger {
+    box-shadow: 0 5px 0 #f2c3ba, 0 11px 16px rgba(74, 55, 40, 0.08);
+  }
+}
+
 :root {
   --animate-spin: spin 1s linear infinite;
 }

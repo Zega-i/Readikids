@@ -2,6 +2,7 @@ import { useState } from "react";
 import { CiloKancil } from "../components/CiloKancil";
 import InstallModal from "../components/InstallModal";
 
+// Kartu langkah (versi web / desktop)
 const stepsCilo = [
   {
     icon: "🧑",
@@ -18,6 +19,13 @@ const stepsCilo = [
     title: "3 · cerita untuk Anda",
     description: "saran pendampingan",
   },
+];
+
+// Ubin ringkas (versi HP — mengikuti mockup Android 56:4)
+const tilesMobile = [
+  { icon: "🧑", label: "izin ortu" },
+  { icon: "🎒", label: "anak main" },
+  { icon: "📖", label: "cerita untuk Anda" },
 ];
 
 interface LandingPageProps {
@@ -42,18 +50,17 @@ export default function LandingPage({
     >
       {/* Background Decorator */}
       <div className="absolute inset-0 pointer-events-none z-0" aria-hidden="true">
-        {/* Lencana Matahari Kuning Anima */}
-        <div className="absolute top-4 right-6 w-16 h-16 sm:w-20 sm:h-20 bg-[#ffd34d] rounded-full border-[3px] border-solid border-white shadow-[0px_2px_8px_#4a37282e] hidden sm:block" />
-        {/* Awan-Awan */}
-        <div className="absolute top-[60px] left-[150px] w-[80px] h-[22px] bg-white rounded-full opacity-90" />
-        <div className="absolute top-[100px] right-[280px] w-[60px] h-[18px] bg-white rounded-full opacity-85" />
+        {/* Lencana Matahari Kuning — diturunkan sedikit di HP (sm+ tetap) */}
+        <div className="absolute top-7 right-5 sm:top-4 sm:right-6 w-16 h-16 sm:w-20 sm:h-20 bg-[#ffd34d] rounded-full border-[3px] border-solid border-white shadow-[0px_2px_8px_#4a37282e]" />
+        {/* Awan-Awan — ikut turun agar jarak ke matahari tetap (sm+ tetap) */}
+        <div className="absolute top-[80px] sm:top-[64px] left-6 sm:left-[150px] w-[80px] h-[22px] bg-white rounded-full opacity-90" />
+        <div className="absolute top-[136px] sm:top-[120px] right-8 sm:right-[280px] w-[60px] h-[18px] bg-white rounded-full opacity-85" />
       </div>
 
-      {/* Header Navigasi */}
-      <header className="w-full max-w-7xl mx-auto px-4 py-2 sm:py-3 flex items-center justify-between z-20">
+      {/* Header Navigasi — brand di tengah pada HP, kiri+tombol pada desktop */}
+      <header className="w-full max-w-7xl mx-auto px-4 pt-6 pb-2 sm:py-3 flex items-center justify-center lg:justify-between z-20 shrink-0">
         {/* Brand Logo */}
         <div className="flex items-center gap-2">
-          {/* Cilo Mini */}
           <div className="w-8 h-8 sm:w-10 sm:h-10 relative flex items-center justify-center shrink-0">
             <div className="w-full h-full transform scale-[0.12] origin-top-left -ml-1 -mt-1">
               <CiloKancil />
@@ -64,8 +71,8 @@ export default function LandingPage({
           </span>
         </div>
 
-        {/* Action Right */}
-        <div className="flex items-center justify-end gap-3 sm:gap-4 pr-3 lg:pr-5">
+        {/* Action Right — hanya di web (di APK/HP tidak perlu) */}
+        <div className="hidden lg:flex items-center justify-end gap-3 sm:gap-4 pr-3 lg:pr-5">
           <button
             type="button"
             onClick={() => setShowInstallModal(true)}
@@ -76,8 +83,57 @@ export default function LandingPage({
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="w-full max-w-7xl mx-auto px-4 py-2 md:py-4 z-10 grid grid-cols-1 lg:grid-cols-12 gap-2 sm:gap-4 items-center my-auto">
+      {/* ═══════════ HERO — HP (fit 1 layar, mengikuti mockup) ═══════════ */}
+      <section className="flex-1 min-h-0 w-full flex flex-col items-center px-5 pb-3 z-10 lg:hidden text-center">
+        {/* Judul */}
+        <div className="shrink-0">
+          <h1 className="font-black text-[#4a3728] text-4xl tracking-tight leading-none">
+            Dunia Cilo
+          </h1>
+          <p className="font-bold text-[#6b5a48] text-sm mt-1.5">
+            main bareng Cilo — kenali cara belajarmu
+          </p>
+        </div>
+
+        {/* Maskot — mengisi ruang tengah, menyusut di layar pendek */}
+        <div className="flex-1 min-h-0 w-full flex items-center justify-center overflow-hidden">
+          <div className="scale-90 sm:scale-100 origin-center">
+            <CiloKancil />
+          </div>
+        </div>
+
+        {/* CTA + trust + ubin */}
+        <div className="shrink-0 w-full flex flex-col items-center gap-2.5">
+          <button
+            type="button"
+            onClick={handleStartAdventure}
+            className="w-full max-w-xs h-14 rounded-full font-black text-lg tracking-wide transition-transform active:scale-95 shadow-lg bg-[#ffd34d] text-[#4a3728] border-4 border-solid border-white flex items-center justify-center"
+          >
+            MULAI PETUALANGAN!
+          </button>
+
+          <span className="font-bold text-[11px] text-[#6b5a48]">
+            ±15 menit · tanpa akun · bukan diagnosis
+          </span>
+
+          <div className="w-full grid grid-cols-3 gap-2 mt-0.5">
+            {tilesMobile.map((t) => (
+              <div
+                key={t.label}
+                className="bg-[#fff6e9] rounded-2xl border-2 border-solid border-white p-2 shadow-[0px_3px_8px_#4a37282e] flex flex-col items-center gap-1"
+              >
+                <span className="text-2xl leading-none">{t.icon}</span>
+                <span className="font-black text-[#4a3728] text-[11px] leading-tight text-center">
+                  {t.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════ HERO — Desktop / Web (tidak diubah) ═══════════ */}
+      <section className="hidden lg:grid w-full max-w-7xl mx-auto px-4 py-2 md:py-4 z-10 grid-cols-1 lg:grid-cols-12 gap-2 sm:gap-4 items-center my-auto">
         {/* Kolom Kiri: Teks & Button */}
         <div className="lg:col-span-7 flex flex-col items-start gap-2 text-left">
           <span className="px-3 py-1 rounded-full font-black text-[11px] sm:text-xs tracking-wider uppercase text-[#3e8e5a]">
@@ -113,8 +169,8 @@ export default function LandingPage({
         </div>
       </section>
 
-      {/* 3 Step Cards Section */}
-      <section className="w-full max-w-7xl mx-auto px-6 pb-8 z-10">
+      {/* 3 Step Cards Section — Desktop / Web (tidak diubah) */}
+      <section className="hidden lg:block w-full max-w-7xl mx-auto px-4 lg:px-6 pb-8 z-10">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           {stepsCilo.map((step) => (
             <div
@@ -139,7 +195,7 @@ export default function LandingPage({
 
       {/* Elemen Tanah / Bukit */}
       <div
-        className="absolute inset-x-0 bottom-0 pointer-events-none z-0 overflow-hidden h-72 sm:h-96 lg:h-[450px]"
+        className="absolute inset-x-0 bottom-0 pointer-events-none z-0 overflow-hidden h-56 sm:h-96 lg:h-[450px]"
         aria-hidden="true"
       >
         <svg
@@ -148,16 +204,8 @@ export default function LandingPage({
           preserveAspectRatio="none"
           className="w-full h-full"
         >
-          {/* Bukit Kiri */}
-          <path
-            d="M-100,320 C150,80 550,120 850,320 Z"
-            fill="#8fcf74"
-          />
-          {/* Bukit Kanan */}
-          <path
-            d="M450,320 C800,100 1180,140 1540,320 Z"
-            fill="#6dbb57"
-          />
+          <path d="M-100,320 C150,80 550,120 850,320 Z" fill="#8fcf74" />
+          <path d="M450,320 C800,100 1180,140 1540,320 Z" fill="#6dbb57" />
         </svg>
       </div>
 
@@ -165,7 +213,7 @@ export default function LandingPage({
         {statusMessage}
       </span>
 
-      {/* W0b · Modal Pasang Aplikasi */}
+      {/* W0b · Modal Pasang Aplikasi (web saja) */}
       <InstallModal open={showInstallModal} onClose={() => setShowInstallModal(false)} />
     </main>
   );

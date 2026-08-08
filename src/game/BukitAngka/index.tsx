@@ -85,9 +85,6 @@ function generateTargets(seed: string): number[] {
   return shuffle(blocks, rng).flat();
 }
 
-const BASE_CANVAS = { w: 1280, h: 800 };
-const LINE = { x: 240, width: 800 };
-
 export interface NumberLineGameProps {
   onComplete?: (telemetry: NumberLineTrialEvent[]) => void;
   onBack?: () => void;
@@ -105,7 +102,6 @@ export const NumberLineGame = ({ onComplete, onBack }: NumberLineGameProps): JSX
   const [hasMoved, setHasMoved] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
-  const [stageScale, setStageScale] = useState(1);
   const [viewportSize, setViewportSize] = useState({ w: 1280, h: 800 });
 
   const telemetryRef = useRef<NumberLineTrialEvent[]>([]);
@@ -135,9 +131,7 @@ export const NumberLineGame = ({ onComplete, onBack }: NumberLineGameProps): JSX
   }, [currentIndex]);
 
   const updateScale = useCallback(() => {
-    const vw = window.innerWidth, vh = window.innerHeight;
-    setStageScale(Math.min(vw / BASE_CANVAS.w, vh / BASE_CANVAS.h));
-    setViewportSize({ w: vw, h: vh });
+    setViewportSize({ w: window.innerWidth, h: window.innerHeight });
   }, []);
 
   useEffect(() => {
@@ -228,7 +222,7 @@ export const NumberLineGame = ({ onComplete, onBack }: NumberLineGameProps): JSX
       deviceInfo: {
         viewportWidth: viewportSize.w,
         viewportHeight: viewportSize.h,
-        effectiveScale: stageScale,
+        effectiveScale: typeof window !== "undefined" ? window.devicePixelRatio : 1,
         pointerType: "mouse",
       },
     };
@@ -250,85 +244,76 @@ export const NumberLineGame = ({ onComplete, onBack }: NumberLineGameProps): JSX
   const markerPercent = (markerValue / RANGE_MAX) * 100;
 
   return (
-    <main className="w-screen h-screen h-[100dvh] bg-[linear-gradient(180deg,rgba(255,233,201,1)_0%,rgba(242,166,90,1)_100%)] relative overflow-hidden select-none font-nunito flex items-center justify-center text-[#4a3728]"
+    <main className="w-full h-[100dvh] bg-[linear-gradient(180deg,rgba(255,233,201,1)_0%,rgba(242,166,90,1)_100%)] relative overflow-hidden select-none font-nunito flex flex-col text-[#4a3728]"
       style={{ touchAction: "none" }}>
-      <div
-        style={{
-          width: BASE_CANVAS.w, height: BASE_CANVAS.h,
-          transform: `scale(${stageScale})`, transformOrigin: "center center",
-        }}
-        className="relative shrink-0 overflow-hidden"
-      >
-        {/* Header */}
-        <header className="absolute top-6 left-0 w-full px-10 flex items-start justify-between z-20">
+
+      {/* Header */}
+      <header className="shrink-0 px-4 pt-4">
+        <div className="flex items-center justify-between gap-2">
           <button type="button" onClick={onBack}
-            className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-md active:scale-95 border-2 border-white mt-1 cursor-pointer"
+            className="w-12 h-12 rounded-full bg-white rk-sticker flex items-center justify-center active:scale-95 transition-transform cursor-pointer shrink-0"
             aria-label="Kembali">
-            <span className="font-black text-3xl leading-none -mt-1">‹</span>
+            <span className="font-black text-2xl text-[#4a3728] leading-none -mt-0.5">‹</span>
           </button>
-
-          <div className="flex flex-col items-center gap-2">
-            <div className="bg-[#c98a4b] px-9 py-2.5 rounded-2xl border-[3.5px] border-solid border-[#8a5a2b] shadow-md">
-              <h1 className="font-black text-[#fff6e9] text-2xl tracking-wider uppercase">BUKIT ANGKA</h1>
-            </div>
-            <nav className="flex items-center gap-2.5 mt-0.5">
-              {levels.map((lvl, idx) => {
-                const isActive = idx === 2; // 2 = Bukit Angka
-                return (
-                  <div key={lvl.label}
-                    className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl border-3 shadow-sm transition-all ${
-                      isActive ? "bg-[#fff6e9] border-[#ffd34d] scale-105 shadow-md" : "bg-[#fff6e9]/60 border-white/80 opacity-60"
-                    }`} title={lvl.label}>
-                    <span>{lvl.emoji}</span>
-                  </div>
-                );
-              })}
-            </nav>
+          <div className="bg-[#c98a4b] px-5 py-2 rounded-2xl border-[3px] border-[#8a5a2b] shadow-[0px_4px_0px_#8a5a2b,0px_9px_12px_rgba(74,55,40,0.2)]">
+            <h1 className="font-black text-[#fff6e9] text-lg tracking-wider uppercase">BUKIT ANGKA</h1>
           </div>
-
           <button type="button" onClick={handleAudio}
-            className="w-14 h-14 bg-[#ffd34d] rounded-full border-4 border-solid border-white flex items-center justify-center shadow-md active:scale-95 mt-1 cursor-pointer"
+            className="w-12 h-12 rounded-full bg-[#ffd34d] rk-sticker flex items-center justify-center active:scale-95 transition-transform cursor-pointer shrink-0"
             aria-label="Dengarkan petunjuk">
             <span className="text-2xl">🔊</span>
           </button>
-        </header>
+        </div>
+        <nav className="flex items-center justify-center gap-2 mt-3">
+          {levels.map((lvl, idx) => {
+            const isActive = idx === 2;
+            return (
+              <div key={lvl.label}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg border-2 ${
+                  isActive ? "bg-[#fff6e9] border-[#ffd34d] shadow-sm" : "bg-[#fff6e9]/50 border-white/70 opacity-55"
+                }`} title={lvl.label}>
+                <span>{lvl.emoji}</span>
+              </div>
+            );
+          })}
+        </nav>
+      </header>
 
-        {/* Cilo + Balon + Kartu angka target */}
-        <section className="absolute top-[220px] left-0 w-full px-16 flex items-center justify-center gap-16 z-10">
-          <div className="flex items-center gap-6">
-            <div className="relative w-[200px] h-[252px] flex items-center justify-center shrink-0">
-              <div className="absolute transform scale-75 origin-center"><Cilo /></div>
-            </div>
-            <div className="relative bg-white px-7 py-6 rounded-[30px] shadow-[0px_6px_16px_rgba(74,55,40,0.12)] max-w-[280px]">
-              <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-0 h-0 border-t-[10px] border-t-transparent border-r-[14px] border-r-white border-b-[10px] border-b-transparent" />
-              <p className="font-black text-2xl leading-snug whitespace-pre-line">{ciloText}</p>
-            </div>
+      {/* Konten utama */}
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-5 px-5">
+
+        {/* Cilo + balon */}
+        <div className="w-full max-w-md flex items-center gap-3">
+          <div className="relative w-[92px] h-[110px] shrink-0">
+            <div className="absolute top-0 left-0 scale-[0.31] origin-top-left"><Cilo /></div>
           </div>
-
-          {/* Kartu angka target */}
-          <div className="w-[200px] h-[200px] bg-[#f2704e] rounded-[40px] border-[6px] border-solid border-white shadow-[0px_8px_20px_rgba(74,55,40,0.2)] flex items-center justify-center shrink-0">
-            <span className="font-black text-[#4a3728] text-[130px] leading-none">{currentTarget}</span>
+          <div className="relative flex-1 bg-white rounded-[24px] rk-sticker px-5 py-4">
+            <div className="absolute -left-2.5 top-1/2 -translate-y-1/2 w-0 h-0 border-t-[9px] border-t-transparent border-r-[12px] border-r-white border-b-[9px] border-b-transparent" />
+            <p className="font-black text-[#4a3728] text-lg leading-snug whitespace-pre-line">{ciloText}</p>
           </div>
-        </section>
+        </div>
 
-        {/* Garis bilangan + tapak geser */}
-        <section className="absolute left-0 w-full flex flex-col items-center z-10" style={{ top: 500 }}>
-          <div className="relative" style={{ width: LINE.width, height: 90 }}>
-            {/* tiang 0 & 10 */}
-            <div className="absolute bg-[#8a5a2b] rounded" style={{ left: -4, top: 0, width: 10, height: 68 }} />
-            <div className="absolute bg-[#8a5a2b] rounded" style={{ right: -4, top: 0, width: 10, height: 68 }} />
+        {/* Kartu angka target */}
+        <div className="w-32 h-32 bg-[#f2704e] rounded-[32px] border-[6px] border-white shadow-[0px_8px_0px_#d85a3c,0px_16px_20px_rgba(74,55,40,0.18)] flex items-center justify-center shrink-0">
+          <span className="font-black text-white text-[84px] leading-none">{currentTarget}</span>
+        </div>
 
-            {/* garis — POLOS tanpa tick, agar tetap estimasi kontinu */}
+        {/* Garis bilangan (lebar-penuh & responsif) + tapak geser */}
+        <div className="w-full max-w-md px-6">
+          <div className="relative w-full h-24">
+            {/* garis — POLOS tanpa tick (estimasi kontinu) */}
             <div
               ref={lineRef}
               onPointerDown={handleLineClick}
-              className="absolute bg-[#fff6e9] rounded-full border-2 border-white cursor-pointer"
-              style={{ left: 0, top: 26, width: LINE.width, height: 16 }}
+              className="absolute left-0 right-0 bg-[#fff6e9] rounded-full border-2 border-white cursor-pointer"
+              style={{ top: 22, height: 14 }}
             />
-
-            {/* label 0 & 10 */}
-            <div className="absolute font-black text-[34px]" style={{ left: -34, top: 52 }}>0</div>
-            <div className="absolute font-black text-[34px]" style={{ right: -40, top: 52 }}>10</div>
+            {/* tiang 0 & 10 */}
+            <div className="absolute bg-[#8a5a2b] rounded" style={{ left: 0, top: 0, width: 8, height: 58 }} />
+            <div className="absolute bg-[#8a5a2b] rounded" style={{ right: 0, top: 0, width: 8, height: 58 }} />
+            {/* label 0 & 10 — tepat di bawah tiang, tidak menabrak garis cokelat */}
+            <div className="absolute font-black text-2xl text-[#4a3728]" style={{ left: 4, top: 62, transform: "translateX(-50%)" }}>0</div>
+            <div className="absolute font-black text-2xl text-[#4a3728]" style={{ left: "calc(100% - 4px)", top: 62, transform: "translateX(-50%)" }}>10</div>
 
             {/* tapak geser */}
             <div
@@ -337,31 +322,31 @@ export const NumberLineGame = ({ onComplete, onBack }: NumberLineGameProps): JSX
               onPointerUp={handleDragEnd}
               className="absolute rounded-full bg-[#ffd34d] border-[5px] border-white shadow-[0px_6px_14px_rgba(74,55,40,0.25)] flex items-center justify-center cursor-grab active:cursor-grabbing touch-none"
               style={{
-                left: `calc(${markerPercent}% - 36px)`,
-                top: 0,
-                width: 72, height: 72,
+                left: `calc(${markerPercent}% - 28px)`,
+                top: 1,
+                width: 56, height: 56,
                 transition: isDragging ? "none" : "left 0.15s",
                 opacity: isMarkerVisible ? 1 : 0,
                 pointerEvents: isMarkerVisible ? "auto" : "none",
               }}
             >
-              <span className="text-3xl leading-none pointer-events-none">🐾</span>
+              <span className="text-2xl leading-none pointer-events-none">🐾</span>
             </div>
           </div>
-
-          {/* Tombol LOMPAT */}
-          <button type="button" onClick={handleLompat} disabled={!hasMoved || isTransitioning}
-            className="mt-16 px-12 py-3.5 bg-[#ffd34d] rounded-full border-[5px] border-white shadow-[0px_6px_14px_rgba(74,55,40,0.2)] font-black text-[#4a3728] text-2xl active:scale-95 transition-transform cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
-            LOMPAT!
-          </button>
-        </section>
-
-        {/* Hint */}
-        <div className="absolute left-0 w-full text-center z-10" style={{ top: 758 }}>
-          <p className="font-bold text-[#7a4a12] text-base">
-            sentuh garisnya, geser jika perlu, lalu tekan LOMPAT 🌱
-          </p>
         </div>
+
+        {/* Tombol LOMPAT */}
+        <button type="button" onClick={handleLompat} disabled={!hasMoved || isTransitioning}
+          className="px-12 py-3.5 bg-[#ffd34d] rounded-full border-[4px] border-white shadow-[0px_5px_0px_#e8b84d,0px_11px_14px_rgba(74,55,40,0.18)] font-black text-[#4a3728] text-2xl active:scale-95 transition-transform cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+          LOMPAT!
+        </button>
+      </div>
+
+      {/* Hint */}
+      <div className="shrink-0 pb-7 px-5 text-center">
+        <p className="font-bold text-[#7a4a12] text-sm">
+          sentuh garisnya, geser jika perlu, lalu tekan LOMPAT 🌱
+        </p>
       </div>
     </main>
   );

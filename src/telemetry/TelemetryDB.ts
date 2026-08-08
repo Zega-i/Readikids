@@ -15,8 +15,10 @@
 import Dexie, { type Table } from 'dexie';
 import type {
   ChildProfile,
+  MissionProgress,
   RiskAssessment,
   SessionRecord,
+  StoredCompanionPlan,
   TelemetryEvent,
   TrialRecord,
 } from '../types/telemetry';
@@ -32,6 +34,10 @@ export class ReadiKidsDB extends Dexie {
   trials!: Table<TrialRecord, number>;
   /** Hasil penilaian risiko per sesi. */
   riskAssessments!: Table<RiskAssessment, number>;
+  /** Status penyelesaian misi rumah per anak per minggu. */
+  missionProgress!: Table<MissionProgress, string>;
+  /** Rencana Pendampingan tersimpan (1 per sesi) — sumber misi & narasi. */
+  companionPlans!: Table<StoredCompanionPlan, string>;
 
   constructor() {
     super('readikids');
@@ -74,6 +80,18 @@ export class ReadiKidsDB extends Dexie {
             delete a.studentRef;
           });
       });
+
+    // v3: tabel baru `missionProgress` untuk melacak "misi rumah minggu ini".
+    // Tabel baru & kosong — tidak perlu upgrade() migrasi data lama.
+    this.version(3).stores({
+      missionProgress: 'id, childRef, weekKey',
+    });
+
+    // v4: tabel baru `companionPlans` — plan disimpan sekali agar misi/narasi
+    // konsisten di semua tampilan & lintas platform. Tabel baru → tanpa upgrade().
+    this.version(4).stores({
+      companionPlans: 'sessionId, childRef',
+    });
   }
 }
 
@@ -89,13 +107,15 @@ export async function deleteChildData(childRef: string): Promise<void> {
   const sessionIds = sessions.map((s) => s.id);
   await db.transaction(
     'rw',
-    [db.sessions, db.events, db.trials, db.riskAssessments, db.childProfiles],
+    [db.sessions, db.events, db.trials, db.riskAssessments, db.childProfiles, db.missionProgress, db.companionPlans],
     async () => {
       if (sessionIds.length > 0) {
         await db.events.where('sessionId').anyOf(sessionIds).delete();
         await db.trials.where('sessionId').anyOf(sessionIds).delete();
       }
       await db.riskAssessments.where('childRef').equals(childRef).delete();
+      await db.companionPlans.where('childRef').equals(childRef).delete();
+      await db.missionProgress.where('childRef').equals(childRef).delete();
       await db.sessions.where('childRef').equals(childRef).delete();
       await db.childProfiles.delete(childRef);
     },

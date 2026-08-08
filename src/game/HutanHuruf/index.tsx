@@ -121,8 +121,6 @@ function generateSessionTrials(seedStr: string): TrialConfig[] {
   return shuffledBlocks.flatMap((b) => shuffleArray(b, rng));
 }
 
-const BASE_CANVAS = { w: 1280, h: 800 };
-
 interface VisualGameProps {
   onComplete?: (telemetry: TrialEvent[]) => void;
   onBack?: () => void;
@@ -133,7 +131,6 @@ export const VisualGame = ({ onComplete, onBack }: VisualGameProps): JSX.Element
   const [trials] = useState<TrialConfig[]>(() => generateSessionTrials(sessionSeed));
   const [currentTrialIndex, setCurrentTrialIndex] = useState(0);
 
-  const [stageScale, setStageScale] = useState(1);
   const [viewportSize, setViewportSize] = useState({ w: 1280, h: 800 });
 
   const telemetryDataRef = useRef<TrialEvent[]>([]);
@@ -155,12 +152,7 @@ export const VisualGame = ({ onComplete, onBack }: VisualGameProps): JSX.Element
   }, [currentTrialIndex]);
 
   const updateStageDimensions = useCallback(() => {
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const scale = Math.min(vw / BASE_CANVAS.w, vh / BASE_CANVAS.h);
-    
-    setViewportSize({ w: vw, h: vh });
-    setStageScale(scale);
+    setViewportSize({ w: window.innerWidth, h: window.innerHeight });
   }, []);
 
   useEffect(() => {
@@ -193,7 +185,7 @@ export const VisualGame = ({ onComplete, onBack }: VisualGameProps): JSX.Element
       deviceInfo: {
         viewportWidth: viewportSize.w,
         viewportHeight: viewportSize.h,
-        effectiveScale: stageScale,
+        effectiveScale: typeof window !== "undefined" ? window.devicePixelRatio : 1,
         pointerType: event.pointerType || "mouse",
       },
     };
@@ -210,136 +202,108 @@ export const VisualGame = ({ onComplete, onBack }: VisualGameProps): JSX.Element
   };
 
   return (
-    <main className="w-screen h-screen h-[100dvh] bg-[linear-gradient(180deg,rgba(203,235,180,1)_0%,rgba(109,187,87,1)_100%)] relative overflow-hidden select-none font-nunito flex items-center justify-center text-[#4a3728]">
-      
-      {/* Container Panggung Berskala (Fixed Canvas 1280x800) */}
-      <div
-        style={{
-          width: BASE_CANVAS.w,
-          height: BASE_CANVAS.h,
-          transform: `scale(${stageScale})`,
-          transformOrigin: "center center",
-        }}
-        className="relative shrink-0 overflow-hidden"
-      >
-        
-        {/* 1. Header (Tombol Kembali, Plang Judul & Indikator Peta, Tombol Suara) */}
-        <header className="absolute top-6 left-0 w-full px-10 flex items-start justify-between z-20">
-          
-          {/* Tombol Kembali (Kiri) */}
+    <main className="w-full h-[100dvh] bg-[linear-gradient(180deg,rgba(203,235,180,1)_0%,rgba(109,187,87,1)_100%)] relative overflow-hidden select-none font-nunito flex flex-col text-[#4a3728]">
+
+      {/* Header */}
+      <header className="shrink-0 px-4 pt-4">
+        <div className="flex items-center justify-between gap-2">
+          {/* Kembali */}
           <button
             type="button"
             onClick={onBack}
-            className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-md hover:bg-slate-50 active:scale-95 transition-transform cursor-pointer border-2 border-white mt-1"
+            className="w-12 h-12 rounded-full bg-white rk-sticker flex items-center justify-center active:scale-95 transition-transform cursor-pointer shrink-0"
             aria-label="Kembali"
           >
-            <span className="font-black text-3xl text-[#4a3728] leading-none -mt-1">‹</span>
+            <span className="font-black text-2xl text-[#4a3728] leading-none -mt-0.5">‹</span>
           </button>
 
-          {/* Plang Judul & Indikator Level Peta (Tengah) */}
-          <div className="flex flex-col items-center gap-2">
-            <div className="bg-[#c98a4b] px-9 py-2.5 rounded-2xl border-[3.5px] border-solid border-[#8a5a2b] shadow-md">
-              <h1 className="font-black text-[#fff6e9] text-2xl tracking-wider uppercase">
-                HUTAN HURUF
-              </h1>
-            </div>
-
-            {/* Indikator Peta Dunia */}
-            <nav className="flex items-center gap-2.5 mt-0.5">
-              {levels.map((lvl, idx) => {
-                const isActive = idx === 0; // 0 = Hutan Huruf (Aktif)
-                return (
-                  <div
-                    key={lvl.label}
-                    className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl border-3 shadow-sm transition-all ${
-                      isActive
-                        ? "bg-[#fff6e9] border-[#ffd34d] scale-105 shadow-md"
-                        : "bg-[#fff6e9]/60 border-white/80 opacity-60"
-                    }`}
-                    title={lvl.label}
-                  >
-                    <span>{lvl.emoji}</span>
-                  </div>
-                );
-              })}
-            </nav>
+          {/* Plang Judul */}
+          <div className="bg-[#c98a4b] px-5 py-2 rounded-2xl border-[3px] border-[#8a5a2b] shadow-[0px_4px_0px_#8a5a2b,0px_9px_12px_rgba(74,55,40,0.2)]">
+            <h1 className="font-black text-[#fff6e9] text-lg tracking-wider uppercase">
+              HUTAN HURUF
+            </h1>
           </div>
 
-          {/* Tombol Audio (Kanan) */}
+          {/* Audio */}
           <button
             type="button"
             onClick={handleAudioInstruction}
-            className="w-14 h-14 bg-[#ffd34d] rounded-full border-4 border-solid border-white flex items-center justify-center shadow-md active:scale-95 transition-transform cursor-pointer mt-1"
+            className="w-12 h-12 rounded-full bg-[#ffd34d] rk-sticker flex items-center justify-center active:scale-95 transition-transform cursor-pointer shrink-0"
             aria-label="Dengarkan petunjuk"
           >
             <span className="text-2xl">🔊</span>
           </button>
-        </header>
+        </div>
 
-        {/* 2. Area Stimulus Utama (Cilo + Balon Kata + Kartu Target) */}
-        <section className="absolute top-[230px] left-0 w-full px-16 flex items-center justify-center gap-16 z-10">
-          
-          {/* Cilo & Balon Kata */}
-          <div className="flex items-center gap-6">
-            
-            {/* Maskot Cilo */}
-            <div className="relative w-[200px] h-[252px] flex items-center justify-center shrink-0">
-              <div className="absolute transform scale-75 origin-center">
-                <Cilo />
+        {/* Indikator dunia (album stiker) */}
+        <nav className="flex items-center justify-center gap-2 mt-3">
+          {levels.map((lvl, idx) => {
+            const isActive = idx === 0; // 0 = Hutan Huruf (Aktif)
+            return (
+              <div
+                key={lvl.label}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg border-2 ${
+                  isActive
+                    ? "bg-[#fff6e9] border-[#ffd34d] shadow-sm"
+                    : "bg-[#fff6e9]/50 border-white/70 opacity-55"
+                }`}
+                title={lvl.label}
+              >
+                <span>{lvl.emoji}</span>
               </div>
-            </div>
+            );
+          })}
+        </nav>
+      </header>
 
-            {/* Balon Kata Cilo */}
-            <div className="relative bg-white px-7 py-6 rounded-[30px] shadow-[0px_6px_16px_rgba(74,55,40,0.12)] max-w-[320px]">
-              <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-0 h-0 border-t-[10px] border-t-transparent border-r-[14px] border-r-white border-b-[10px] border-b-transparent" />
-              <p className="font-black text-[#4a3728] text-2xl leading-snug">
-                Cari kembaran
-                <br />
-                huruf ini, yuk!
-              </p>
+      {/* Konten utama — mengisi ruang & terpusat */}
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-5 px-5">
+
+        {/* Cilo + balon kata */}
+        <div className="w-full max-w-md flex items-center gap-3">
+          <div className="relative w-[92px] h-[110px] shrink-0">
+            <div className="absolute top-0 left-0 scale-[0.31] origin-top-left">
+              <Cilo />
             </div>
           </div>
-
-          {/* Kartu Stimulus Utama */}
-          <div className="w-[230px] h-[260px] bg-[#ffd34d] rounded-[44px] border-[7px] border-solid border-white shadow-[0px_8px_20px_rgba(74,55,40,0.18)] flex items-center justify-center shrink-0">
-            <span className="font-black text-[#4a3728] text-[140px] leading-none -mt-3">
-              {currentTrial.stimulus}
-            </span>
+          <div className="relative flex-1 bg-white rounded-[24px] rk-sticker px-5 py-4">
+            <div className="absolute -left-2.5 top-1/2 -translate-y-1/2 w-0 h-0 border-t-[9px] border-t-transparent border-r-[12px] border-r-white border-b-[9px] border-b-transparent" />
+            <p className="font-black text-[#4a3728] text-lg leading-snug">
+              Cari kembaran huruf ini, yuk!
+            </p>
           </div>
+        </div>
 
-        </section>
+        {/* Kartu stimulus */}
+        <div className="w-40 h-44 bg-[#ffd34d] rounded-[36px] border-[6px] border-white shadow-[0px_8px_0px_#e8b84d,0px_16px_20px_rgba(74,55,40,0.18)] flex items-center justify-center shrink-0">
+          <span className="font-black text-[#4a3728] text-[100px] leading-none -mt-2">
+            {currentTrial.stimulus}
+          </span>
+        </div>
 
-        {/* 3. Pod Pilihan Jawaban (3 Batu Bulat Spasi Luas) */}
-        <section className="absolute top-[525px] left-0 w-full flex items-center justify-center gap-14 z-10">
+        {/* Pod pilihan jawaban — statis (tanpa animasi selama trial) */}
+        <div className="w-full max-w-md flex items-center justify-center gap-4">
           {currentPodOptions.map((letter, idx) => (
             <button
               key={`${letter}-${idx}`}
               type="button"
               onPointerDown={(e) => handlePointerDownAnswer(letter, e)}
-              className="w-34 h-34 w-[136px] h-[136px] rounded-full border-[6px] border-solid border-white bg-[#fff6e9] shadow-[0px_8px_18px_rgba(74,55,40,0.18)] flex items-center justify-center transition-all duration-150 cursor-pointer active:scale-90 hover:scale-105 hover:bg-[#fff9f0]"
+              className="w-[86px] h-[86px] rounded-full border-[5px] border-white bg-[#fff6e9] shadow-[0px_6px_0px_#e2d3bd,0px_12px_16px_rgba(74,55,40,0.15)] flex items-center justify-center cursor-pointer shrink-0"
               aria-label={`Pilih huruf ${letter}`}
             >
-              <span className="font-black text-[#4a3728] text-6xl leading-none">
+              <span className="font-black text-[#4a3728] text-5xl leading-none">
                 {letter}
               </span>
             </button>
           ))}
-        </section>
-
-        {/* 4. Teks Instruksi Bawah */}
-        <div className="absolute top-[715px] left-0 w-full text-center z-10">
-          <p className="font-bold text-[#2f5b23] text-lg tracking-wide">
-            klik / sentuh batunya — semua pilihan boleh 🌱
-          </p>
         </div>
+      </div>
 
-        {/* 5. Footer Layar */}
-        <footer className="absolute bottom-3 left-0 w-full text-center shrink-0 z-10">
-          <p className="font-bold text-[#2f5b23]/70 text-xs">
-            ReadiKids · Skrining Dini
-          </p>
-        </footer>
-
+      {/* Hint bawah */}
+      <div className="shrink-0 pb-7 px-5 text-center">
+        <p className="font-bold text-[#2f5b23] text-sm tracking-wide">
+          sentuh batunya — semua pilihan boleh 🌱
+        </p>
       </div>
     </main>
   );

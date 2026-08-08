@@ -17,7 +17,10 @@
 // bergantung pada paket `@vercel/node` saat build Vercel (menghindari error
 // "Cannot find module"). Kompatibel secara struktural dengan yang dikirim Vercel.
 type VercelReq = { method?: string; body?: unknown };
-type VercelRes = { status: (code: number) => { json: (data: unknown) => void } };
+type VercelRes = {
+  status: (code: number) => { json: (data: unknown) => void };
+  setHeader: (name: string, value: string) => void;
+};
 
 // Akses env lewat globalThis tanpa mendeklarasikan global `process` — agar tak
 // bentrok dengan @types/node bila ada, dan tetap jalan tanpa @types/node saat
@@ -118,6 +121,16 @@ function isValidPlan(p: unknown): p is {
 }
 
 export default async function handler(req: VercelReq, res: VercelRes): Promise<void> {
+  // CORS: izinkan panggilan lintas-origin dari APK (WebView Capacitor memakai
+  // origin https://localhost) maupun origin lain. Endpoint hanya menerima
+  // metrik agregat tanpa kredensial/cookie, sehingga '*' aman.
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') {
+    res.status(204).json({});
+    return;
+  }
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
     return;

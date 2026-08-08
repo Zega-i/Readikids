@@ -30,7 +30,7 @@ import type { ChildProfile } from "./types/telemetry";
 
 // Pipeline nyata (menggantikan data dummy)
 import { runScreeningPipeline } from "./game/resultsPipeline";
-import { getBerandaData, getLatestScreeningResult } from "./companion/dashboardData";
+import { getBerandaData, getLatestScreeningResult, getWeeklyMissionDone, toggleWeeklyMission } from "./companion/dashboardData";
 import { listChildProfiles } from "./profiles/childProfileService";
 
 export default function App() {
@@ -291,11 +291,13 @@ export default function App() {
         />
       )}
 
-      {currentScreen === "beranda-pendamping" && activeProfile && (
+      {currentScreen === "beranda-pendamping" && (
         <BerandaPendamping
           activeProfile={activeProfile}
           allProfiles={allProfiles}
           fetchBerandaData={async (profileId) => getBerandaData(profileId)}
+          fetchMissionDone={async (childRef) => getWeeklyMissionDone(childRef)}
+          onToggleMission={async (childRef, index) => toggleWeeklyMission(childRef, index)}
           onSwitchProfile={(profileId) => {
             const p = allProfiles.find((x) => x.id === profileId);
             if (p) {
@@ -333,6 +335,15 @@ export default function App() {
       {currentScreen === "kelola" && (
         <ChildProfileManager
           refreshKey={refreshKey}
+          activeProfileId={activeProfile?.id ?? null}
+          onSwitchProfile={(profileId) => {
+            const p = allProfiles.find((x) => x.id === profileId);
+            if (p) {
+              setActiveProfile(p);
+              setLatestResult(null);
+            }
+          }}
+          onAddChild={() => setCurrentScreen("consent")}
           onProfileDeleted={() => {
             void refreshProfiles().then(profiles => {
               setActiveProfile(prevActive => {
@@ -344,13 +355,7 @@ export default function App() {
               });
             });
           }}
-          onBack={() => {
-            if (allProfiles.length === 0) {
-              setCurrentScreen("landing");
-            } else {
-              setCurrentScreen("beranda-pendamping");
-            }
-          }}
+          onBack={() => setCurrentScreen("beranda-pendamping")}
         />
       )}
 

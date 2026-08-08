@@ -16,6 +16,7 @@ import { supabase } from './supabaseClient';
 import { ensureAnonymousSession } from './auth';
 import type {
   ChildProfile,
+  CompanionPlanResult,
   RiskAssessment,
   SessionRecord,
 } from '../src/types/telemetry';
@@ -81,8 +82,14 @@ export async function pushSession(s: SessionRecord): Promise<SyncResult> {
   return error ? { ok: false, error: error.message } : { ok: true };
 }
 
-/** Push/replace satu hasil penilaian (unik per sesi). */
-export async function pushAssessment(a: RiskAssessment): Promise<SyncResult> {
+/**
+ * Push/replace satu hasil penilaian (unik per sesi). Bila `plan` disertakan,
+ * kolom rencana (misi/narasi) ikut disimpan agar konsisten lintas perangkat.
+ */
+export async function pushAssessment(
+  a: RiskAssessment,
+  plan?: CompanionPlanResult,
+): Promise<SyncResult> {
   if (!supabase) return NOT_READY;
   if (!(await ready())) return { ok: false, error: 'Sesi anonim gagal dibuat.' };
 
@@ -96,6 +103,15 @@ export async function pushAssessment(a: RiskAssessment): Promise<SyncResult> {
       domains: a.domains,
       metrics: a.metrics,
       created_at: a.createdAt,
+      // Kolom rencana (opsional) — lihat backend/schema.sql.
+      ...(plan
+        ? {
+            plan_source: plan.source,
+            summary: plan.summary,
+            companion_activities: plan.companionActivities,
+            referral_guidance: plan.referralGuidance,
+          }
+        : {}),
     },
     { onConflict: 'session_id' },
   );
@@ -110,12 +126,14 @@ export async function pushSessionResult(args: {
   child: ChildProfile;
   session: SessionRecord;
   assessment: RiskAssessment;
+  /** Rencana pendampingan (opsional) — bila ada, kolom misi/narasi ikut naik. */
+  plan?: CompanionPlanResult;
 }): Promise<SyncResult> {
   const child = await pushChildProfile(args.child);
   if (!child.ok) return child;
   const session = await pushSession(args.session);
   if (!session.ok) return session;
-  return pushAssessment(args.assessment);
+  return pushAssessment(args.assessment, args.plan);
 }
 
 /** Tarik daftar profil anak milik pengguna ini dari server. */

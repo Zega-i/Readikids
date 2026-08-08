@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#FFF6E9"/>
+  <!-- ears -->
+  <g stroke="#FFFFFF" stroke-width="34" paint-order="stroke" stroke-linejoin="round">
+    <circle cx="360" cy="288" r="95" fill="#A9714B"/>
+    <circle cx="664" cy="288" r="95" fill="#A9714B"/>
+  </g>
+  <!-- inner ears -->
+  <circle cx="360" cy="276" r="38" fill="#FBD3B8"/>
+  <circle cx="664" cy="276" r="38" fill="#FBD3B8"/>
+  <!-- body + head -->
+  <g stroke="#FFFFFF" stroke-width="34" paint-order="stroke" stroke-linejoin="round">
+    <ellipse cx="512" cy="726" rx="150" ry="112" fill="#C98A63"/>
+    <ellipse cx="512" cy="486" rx="250" ry="226" fill="#B67B4F"/>
+  </g>
+  <!-- eyes -->
+  <ellipse cx="430" cy="484" rx="26" ry="34" fill="#3B2A1D"/>
+  <ellipse cx="594" cy="484" rx="26" ry="34" fill="#3B2A1D"/>
+  <!-- cheeks -->
+  <ellipse cx="398" cy="560" rx="38" ry="22" fill="#F2A08D" opacity="0.85"/>
+  <ellipse cx="626" cy="560" rx="38" ry="22" fill="#F2A08D" opacity="0.85"/>
+  <!-- nose -->
+  <ellipse cx="512" cy="568" rx="34" ry="24" fill="#3B2A1D"/>
+</svg>

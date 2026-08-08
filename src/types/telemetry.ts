@@ -183,3 +183,34 @@ export interface CompanionPlanResult {
   /** Disclaimer wajib — sistem ini bukan alat diagnosis. */
   disclaimer: string;
 }
+
+/**
+ * Rencana Pendampingan yang DISIMPAN sekali (di akhir skrining), agar misi
+ * rumah & narasi konsisten di semua tampilan (beranda, dashboard, riwayat)
+ * dan lintas platform (web ↔ APK) — tanpa dibangkitkan ulang (yang bisa
+ * berbeda karena LLM non-deterministik) dan agar indeks centang misi stabil.
+ */
+export interface StoredCompanionPlan extends CompanionPlanResult {
+  /** Kunci utama — 1:1 dengan sesi. */
+  sessionId: string;
+  childRef: string;
+  updatedAt: number;
+}
+
+/**
+ * Status penyelesaian "misi rumah minggu ini" per anak per minggu.
+ * Disimpan on-device (Dexie). doneIndices mengacu ke posisi item dalam
+ * daftar aktivitas pendampingan (companionActivities) yang ditampilkan
+ * di Beranda Pendamping.
+ */
+export interface MissionProgress {
+  /** Kunci komposit `${childRef}:${weekKey}` (mis. "uuid:2026-W32"). */
+  id: string;
+  /** Referensi ke ChildProfile.id. */
+  childRef: string;
+  /** Kunci minggu ISO, mis. "2026-W32". */
+  weekKey: string;
+  /** Indeks misi yang sudah ditandai selesai. */
+  doneIndices: number[];
+  updatedAt: number;
+}

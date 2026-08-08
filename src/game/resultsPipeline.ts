@@ -133,14 +133,32 @@ export async function runScreeningPipeline(
   }
 
   // 2) Rencana pendampingan (LLM bila ada key, jika tidak template lokal).
+  //    Dibangkitkan SEKALI di sini lalu DISIMPAN, agar misi & narasi konsisten
+  //    di semua tampilan (beranda/dashboard/riwayat) dan tak berubah tiap buka.
   const plan = await generateCompanionPlan({
     childRef: input.profile.id,
     ageYears: input.profile.ageYears,
     assessment,
   });
 
+  try {
+    await db.companionPlans.put({
+      sessionId,
+      childRef: input.profile.id,
+      source: plan.source,
+      generatedAt: plan.generatedAt || Date.now(),
+      summary: plan.summary,
+      companionActivities: plan.companionActivities,
+      referralGuidance: plan.referralGuidance,
+      disclaimer: plan.disclaimer,
+      updatedAt: Date.now(),
+    });
+  } catch (err) {
+    console.error('[pipeline] gagal simpan plan lokal:', err);
+  }
+
   // 3) Cermin ke server bila Supabase dikonfigurasi (non-blocking).
-  void pushSessionResult({ child: input.profile, session, assessment }).then((r) => {
+  void pushSessionResult({ child: input.profile, session, assessment, plan }).then((r) => {
     if (!r.ok) console.info('[pipeline] sync server dilewati/gagal:', r.error);
   });
 

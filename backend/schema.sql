@@ -50,6 +50,14 @@ create table if not exists public.assessments (
 );
 create index if not exists assessments_owner_idx on public.assessments (owner_id);
 
+-- Kolom Rencana Pendampingan (misi rumah & narasi) — disimpan bersama hasil
+-- agar konsisten lintas tampilan & perangkat. Ditambah terpisah agar aman
+-- dijalankan ulang pada tabel `assessments` yang sudah ada.
+alter table public.assessments add column if not exists plan_source          text;
+alter table public.assessments add column if not exists summary              text;
+alter table public.assessments add column if not exists companion_activities jsonb;
+alter table public.assessments add column if not exists referral_guidance    jsonb;
+
 -- ── Row Level Security: tiap pengguna hanya datanya sendiri ───────────────
 alter table public.children    enable row level security;
 alter table public.sessions    enable row level security;

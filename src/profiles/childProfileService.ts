@@ -64,6 +64,19 @@ export async function deleteChildProfile(id: string): Promise<void> {
 }
 
 /**
+ * Hapus SEMUA profil anak beserta seluruh datanya dari perangkat ini
+ * (fitur "hapus semua sekaligus" — khusus versi APK; di web dihapus
+ * satu per satu). Best-effort per anak; melempar bila ada kegagalan
+ * agar UI bisa memberi tahu pengguna.
+ */
+export async function deleteAllChildProfiles(): Promise<void> {
+  const all = await listChildProfiles();
+  for (const p of all) {
+    await deleteChildProfile(p.id);
+  }
+}
+
+/**
  * Cek cooldown skrining ulang untuk satu anak berdasarkan sesi
  * terakhirnya di DB. Soft-block — keputusan akhir tetap di pendamping.
  */
