@@ -126,16 +126,16 @@ export const CiloMenulisCerita = ({
   }, [typedChars, previewText.length]);
 
   return (
-    <main className="w-full h-[100dvh] bg-[linear-gradient(180deg,rgba(255,235,208,1)_0%,rgba(255,246,233,1)_100%)] relative overflow-hidden select-none font-nunito flex flex-col items-center text-[#4a3728]">
+    <main className="w-full h-[100dvh] bg-[linear-gradient(180deg,rgba(255,235,208,1)_0%,rgba(255,246,233,1)_100%)] relative overflow-hidden select-none font-nunito flex flex-col items-center justify-between text-[#4a3728]">
 
-      {/* Judul (beberapa baris) */}
-      <div className="shrink-0 text-center px-6 pt-9">
+      {/* Judul (beberapa baris) - dipindah sedikit lebih atas agar proporsional */}
+      <div className="shrink-0 text-center px-6 pt-12">
         <h1 className="font-black text-2xl leading-tight">Cilo sedang menulis<br />ceritamu…</h1>
         <p className="font-bold text-[#8a7a66] text-sm mt-2">untuk orangtua/wali 📖</p>
       </div>
 
-      {/* Kertas cerita + Cilo di pojok kanan bawah */}
-      <div className="flex-1 min-h-0 w-full flex items-center justify-center px-6">
+      {/* Kertas cerita + Cilo di pojok kanan bawah - diberi margin bawah agar tidak menabrak checklist */}
+      <div className="shrink-0 w-full flex items-center justify-center px-6 mb-8 mt-4">
         <div className="relative">
           {/* Kilau ✨ — di LUAR kertas agar tidak terpotong */}
           <span className="absolute z-10 text-xl animate-[twinkle_1.4s_ease-in-out_infinite]" style={{ left: -14, top: -12 }}>✨</span>
@@ -166,7 +166,7 @@ export const CiloMenulisCerita = ({
       </div>
 
       {/* Checklist status — bertumpuk */}
-      <div className="shrink-0 w-full max-w-sm px-6">
+      <div className="shrink-0 w-full max-w-sm px-6 pb-2">
         <div className="bg-white rounded-3xl rk-sticker p-4 flex flex-col gap-2.5">
           {STAGES.map((s, i) => {
             const state = i < stageIndex ? "done" : i === stageIndex ? "active" : "pending";
@@ -179,11 +179,8 @@ export const CiloMenulisCerita = ({
         </div>
       </div>
 
-      {/* Spacer bawah agar checklist di tengah (jarak atas = bawah) */}
-      <div className="flex-1 min-h-0" />
-
       {/* Footer */}
-      <div className="shrink-0 pt-3 pb-6 text-center px-6">
+      <div className="shrink-0 pt-3 pb-8 text-center px-6">
         <p className="font-bold text-[#a98f6f] text-xs">
           hanya untuk pendamping · anak tidak melihat layar ini
         </p>

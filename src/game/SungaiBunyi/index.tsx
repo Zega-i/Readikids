@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 // Sesuaikan path import ini dengan struktur proyek Anda:
 import { speak } from "../../utils/tts";
+import { Capacitor } from "@capacitor/core";
 
 // ─── Maskot Cilo ──────────────────────────────────────────────────────────────
 export const Cilo = (): JSX.Element => (
@@ -88,7 +89,7 @@ function generateTrials(seed: string): PhonicsTrialConfig[] {
 
   const block1 = shuffle(block1Stimuli, rng).map((s) => ({ stimulus: s }));
   const block2 = shuffle(block2Stimuli, rng).map((s) => ({ stimulus: s }));
-  
+
   const blocks = [block1, block2];
   // Acak urutan babak, lalu acak soal di dalam babaknya
   return shuffle(blocks, rng).flatMap((b) => shuffle(b, rng));
@@ -120,7 +121,10 @@ function playSyllable(syllable: string): Promise<void> {
       void speak(syllable, { lang: "id-ID" }).then(() => resolve());
     };
     try {
-      const audio = new Audio(`/audio/${syllable}.mp3`);
+      // Perbaikan path: menggunakan path relatif saat berjalan di native (Capacitor)
+      // agar tidak membentur base path localhost yang salah
+      const audioPath = Capacitor.isNativePlatform() ? `audio/${syllable}.mp3` : `/audio/${syllable}.mp3`;
+      const audio = new Audio(audioPath);
       audio.onended = finish;
       audio.onerror = fallbackToTts; // file belum ada / gagal load
       const played = audio.play();
