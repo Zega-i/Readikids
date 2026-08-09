@@ -96,13 +96,15 @@ function buildPrompt(body: PlanRequestBody): string {
     '',
     'Buat Rencana Pendampingan ringkas dalam Bahasa Indonesia sederhana.',
     'Jawab HANYA dengan JSON valid berformat persis:',
-    '{"summary": string, "companionActivities": string[], "referralGuidance": string[]}',
+    '{"summary": string, "companionActivities": string[], "referralGuidance": string[], "metricExplanations": {"hi": string, "rr": string, "nlee": string}}',
     'Ketentuan: summary maksimal 3 kalimat, bahasa observasi yang suportif',
     '(contoh: "ditemukan pola yang sebaiknya diamati" — BUKAN vonis seperti "anak Anda disleksia");',
     'companionActivities 3-5 aktivitas pendampingan sederhana tanpa alat mahal;',
     'referralGuidance 2-3 langkah konkret kapan & ke mana mencari bantuan profesional',
     'sesuai level indikasi; gunakan istilah "indikasi", jangan menyebut diagnosis medis,',
     'jangan menjanjikan hasil.',
+    'Untuk metricExplanations, berikan SATU kalimat analisis singkat per metrik (hi=Jeda ragu, rr=Huruf cermin, nlee=Estimasi angka) ',
+    'yang menjelaskan mengapa metrik tersebut rendah/sedang/tinggi, WAJIB menyertakan angka aktual dari metrikAgregat dalam kalimat tersebut.'
   ].join('\n');
 }
 
@@ -110,13 +112,19 @@ function isValidPlan(p: unknown): p is {
   summary: string;
   companionActivities: string[];
   referralGuidance: string[];
+  metricExplanations: { hi: string; rr: string; nlee: string };
 } {
   const x = p as Record<string, unknown>;
   return (
     !!x &&
     typeof x.summary === 'string' &&
     Array.isArray(x.companionActivities) &&
-    Array.isArray(x.referralGuidance)
+    Array.isArray(x.referralGuidance) &&
+    typeof x.metricExplanations === 'object' &&
+    x.metricExplanations !== null &&
+    typeof (x.metricExplanations as any).hi === 'string' &&
+    typeof (x.metricExplanations as any).rr === 'string' &&
+    typeof (x.metricExplanations as any).nlee === 'string'
   );
 }
 
@@ -190,6 +198,7 @@ export default async function handler(req: VercelReq, res: VercelRes): Promise<v
       summary: parsed.summary,
       companionActivities: parsed.companionActivities,
       referralGuidance: parsed.referralGuidance,
+      metricExplanations: parsed.metricExplanations,
     });
   } catch (err) {
     res.status(502).json({ error: err instanceof Error ? err.message : String(err) });

@@ -293,6 +293,10 @@ const main = async () => {
     // Bahasa observasi, bukan vonis: summary tidak boleh memvonis label.
     assert.ok(!plan.summary.includes('disleksia'), 'summary tidak boleh melabeli anak');
     assert.match(plan.summary, /konsultasi/); // level HIGH → ajakan konsultasi
+    assert.ok(plan.metricExplanations, 'penjelasan metrik absen');
+    assert.match(plan.metricExplanations.hi, /\d+%/, 'penjelasan HI tidak memuat angka persentase');
+    assert.match(plan.metricExplanations.rr, /\d+\.\d+/, 'penjelasan RR tidak memuat rasio desimal');
+    assert.match(plan.metricExplanations.nlee, /\d+%/, 'penjelasan NLEE tidak memuat angka persentase');
   });
 
   await test('generateLocalCompanionPlan: level LOW → rujukan pasif (tanpa keharusan)', () => {
@@ -346,10 +350,15 @@ const main = async () => {
 
   await test('parseGeminiPlan: terima fence ```json & tolak skema salah', () => {
     const ok = parseGeminiPlan(
-      '```json\n{"summary":"ok","companionActivities":["a"],"referralGuidance":["b"]}\n```',
+      '```json\n{"summary":"ok","companionActivities":["a"],"referralGuidance":["b"],"metricExplanations":{"hi":"x","rr":"y","nlee":"z"}}\n```',
     );
     assert.equal(ok.summary, 'ok');
+    assert.equal(ok.metricExplanations.hi, 'x');
     assert.throws(() => parseGeminiPlan('{"summary":"x"}'));
+    // Tolak jika metricExplanations hilang/salah tipe
+    assert.throws(() =>
+      parseGeminiPlan('{"summary":"ok","companionActivities":["a"],"referralGuidance":["b"]}'),
+    );
     // Skema lama (teacherRecommendations) juga harus ditolak.
     assert.throws(() =>
       parseGeminiPlan('{"summary":"x","teacherRecommendations":["a"],"parentActivities":["b"]}'),

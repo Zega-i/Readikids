@@ -65,7 +65,7 @@ export function buildCompanionPlanPrompt(profile: ChildProfileForPlan): string {
     '',
     'Buat Rencana Pendampingan ringkas dalam Bahasa Indonesia sederhana.',
     'Jawab HANYA dengan JSON valid berformat persis:',
-    '{"summary": string, "companionActivities": string[], "referralGuidance": string[]}',
+    '{"summary": string, "companionActivities": string[], "referralGuidance": string[], "metricExplanations": {"hi": string, "rr": string, "nlee": string}}',
     'Ketentuan: summary maksimal 3 kalimat, bahasa observasi yang suportif',
     '(contoh: "ditemukan pola yang sebaiknya diamati" — BUKAN vonis seperti "anak Anda disleksia");',
     'companionActivities 3-5 aktivitas pendampingan sederhana yang bisa dilakukan',
@@ -73,6 +73,8 @@ export function buildCompanionPlanPrompt(profile: ChildProfileForPlan): string {
     'referralGuidance 2-3 langkah konkret kapan & ke mana mencari bantuan profesional',
     '(psikolog anak, puskesmas, klinik tumbuh kembang) sesuai level indikasi;',
     'jangan menyebut diagnosis medis, jangan menjanjikan hasil, gunakan istilah "indikasi".',
+    'Untuk metricExplanations, berikan SATU kalimat analisis singkat per metrik (hi=Jeda ragu, rr=Huruf cermin, nlee=Estimasi angka) ',
+    'yang menjelaskan mengapa metrik tersebut rendah/sedang/tinggi, WAJIB menyertakan angka aktual dari metrikAgregat dalam kalimat tersebut.'
   ].join('\n');
 }
 
@@ -80,6 +82,11 @@ interface GeminiPlanPayload {
   summary: string;
   companionActivities: string[];
   referralGuidance: string[];
+  metricExplanations: {
+    hi: string;
+    rr: string;
+    nlee: string;
+  };
 }
 
 /** Parse respons Gemini yang kadang terbungkus ```json ... ```. */
@@ -89,7 +96,12 @@ export function parseGeminiPlan(text: string): GeminiPlanPayload {
   if (
     typeof parsed.summary !== 'string' ||
     !Array.isArray(parsed.companionActivities) ||
-    !Array.isArray(parsed.referralGuidance)
+    !Array.isArray(parsed.referralGuidance) ||
+    typeof parsed.metricExplanations !== 'object' ||
+    parsed.metricExplanations === null ||
+    typeof (parsed.metricExplanations as any).hi !== 'string' ||
+    typeof (parsed.metricExplanations as any).rr !== 'string' ||
+    typeof (parsed.metricExplanations as any).nlee !== 'string'
   ) {
     throw new Error('Struktur JSON Rencana Pendampingan dari LLM tidak sesuai skema');
   }
@@ -134,7 +146,12 @@ export async function generateCompanionPlan(
     if (
       typeof payload.summary !== 'string' ||
       !Array.isArray(payload.companionActivities) ||
-      !Array.isArray(payload.referralGuidance)
+      !Array.isArray(payload.referralGuidance) ||
+      typeof payload.metricExplanations !== 'object' ||
+      payload.metricExplanations === null ||
+      typeof (payload.metricExplanations as any).hi !== 'string' ||
+      typeof (payload.metricExplanations as any).rr !== 'string' ||
+      typeof (payload.metricExplanations as any).nlee !== 'string'
     ) {
       throw new Error('Struktur JSON rencana dari proxy tidak sesuai skema');
     }
@@ -145,6 +162,7 @@ export async function generateCompanionPlan(
       summary: payload.summary,
       companionActivities: payload.companionActivities,
       referralGuidance: payload.referralGuidance,
+      metricExplanations: payload.metricExplanations as { hi: string; rr: string; nlee: string },
       disclaimer: SCREENING_DISCLAIMER,
     };
   } catch (err) {

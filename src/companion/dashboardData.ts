@@ -34,13 +34,14 @@ async function planForSession(
   assessment: RiskAssessment,
 ): Promise<CompanionPlanResult> {
   const stored = await db.companionPlans.get(sessionId);
-  if (stored) {
+  if (stored && stored.metricExplanations) {
     return {
       source: stored.source,
       generatedAt: stored.generatedAt,
       summary: stored.summary,
       companionActivities: stored.companionActivities,
       referralGuidance: stored.referralGuidance,
+      metricExplanations: stored.metricExplanations,
       disclaimer: stored.disclaimer,
     };
   }
@@ -54,6 +55,7 @@ async function planForSession(
       summary: plan.summary,
       companionActivities: plan.companionActivities,
       referralGuidance: plan.referralGuidance,
+      metricExplanations: plan.metricExplanations,
       disclaimer: plan.disclaimer,
       updatedAt: Date.now(),
     });
@@ -101,6 +103,7 @@ export async function getAllScreeningResults(profileId: string): Promise<Screeni
         summary: plan.summary,
         companionActivities: plan.companionActivities,
         referralGuidance: plan.referralGuidance,
+        metricExplanations: plan.metricExplanations,
         disclaimer: plan.disclaimer,
       },
     });
@@ -153,6 +156,7 @@ export async function getLatestScreeningResult(
       summary: plan.summary,
       companionActivities: plan.companionActivities,
       referralGuidance: plan.referralGuidance,
+      metricExplanations: plan.metricExplanations,
       disclaimer: plan.disclaimer,
     },
   };

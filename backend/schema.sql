@@ -57,6 +57,7 @@ alter table public.assessments add column if not exists plan_source          tex
 alter table public.assessments add column if not exists summary              text;
 alter table public.assessments add column if not exists companion_activities jsonb;
 alter table public.assessments add column if not exists referral_guidance    jsonb;
+alter table public.assessments add column if not exists metric_explanations  jsonb;
 
 -- ── Row Level Security: tiap pengguna hanya datanya sendiri ───────────────
 alter table public.children    enable row level security;

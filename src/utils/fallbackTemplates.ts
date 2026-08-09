@@ -9,9 +9,11 @@
  * v4.0: ditulis untuk PENDAMPING GENERIK (orang tua/wali/guru/tutor),
  * bukan khusus guru — plus blok panduan rujukan per level.
  */
+import { THRESHOLDS } from '../ml/heuristic';
 import type {
   ChildProfileForPlan,
   CompanionPlanResult,
+  MetricExplanations,
   RiskLevel,
 } from '../types/telemetry';
 
@@ -91,6 +93,56 @@ function summarize(profile: ChildProfileForPlan): string {
   );
 }
 
+/**
+ * Menghasilkan kalimat observasi dinamis tapi deterministik untuk 3 metrik
+ * (HI, RR, NLEE) menggunakan formula yang persis sama dengan MetricCalculator.
+ */
+function explainMetrics(profile: ChildProfileForPlan): MetricExplanations {
+  const m = profile.assessment.metrics;
+
+  // 1. Hesitation Index (HI)
+  const hiRaw = m.totalTimeMs > 0 ? (m.hesitationMs / m.totalTimeMs) : 0;
+  const hiPercent = Math.round(hiRaw * 100);
+  const hiThresh = Math.round(THRESHOLDS.HESITATION_INDEX * 100);
+  let hiStr = `Waktu ragu anak tercatat ${hiPercent}% dari total waktu menjawab. `;
+  if (hiRaw >= THRESHOLDS.HESITATION_INDEX) {
+    hiStr += `Angka ini berada di atas ekspektasi umum (${hiThresh}%), yang bisa menjadi sinyal kesulitan memproses informasi dengan cepat.`;
+  } else {
+    hiStr += `Angka ini masih dalam rentang wajar (di bawah ${hiThresh}%), menunjukkan kelancaran dalam memberikan respons.`;
+  }
+
+  // 2. Reversal Ratio (RR)
+  let rrStr = '';
+  if (m.normalLatencyMs > 0 && m.reversalLatencyMs > 0) {
+    const rrRaw = m.reversalLatencyMs / m.normalLatencyMs;
+    const rrFormatted = rrRaw.toFixed(1);
+    rrStr = `Anak membutuhkan waktu ${rrFormatted}× lebih lama untuk merespons huruf-huruf yang mudah tertukar (seperti b/d). `;
+    if (rrRaw >= THRESHOLDS.REVERSAL_RATIO) {
+      rrStr += `Perbedaan yang signifikan ini (batas wajar ${THRESHOLDS.REVERSAL_RATIO}×) sering menjadi indikasi adanya tantangan dalam rotasi spasial visual.`;
+    } else {
+      rrStr += `Perbedaan ini tidak tergolong signifikan (batas wajar ${THRESHOLDS.REVERSAL_RATIO}×), sehingga tidak menunjukkan tanda kesulitan rotasi spasial visual.`;
+    }
+  } else {
+    rrStr = 'Data huruf tidak cukup untuk dibandingkan secara statistik dalam sesi ini.';
+  }
+
+  // 3. Number Line Estimation Error (NLEE)
+  let nleeStr = '';
+  if (m.nleePercent !== null) {
+    const nleeRaw = Math.round(m.nleePercent);
+    nleeStr = `Deviasi saat meletakkan angka di garis bilangan rata-rata sebesar ${nleeRaw}% dari target. `;
+    if (nleeRaw >= THRESHOLDS.NLEE_PERCENT) {
+      nleeStr += `Tingkat deviasi ini melebihi rentang wajar (${THRESHOLDS.NLEE_PERCENT}%), yang bisa mencerminkan kesulitan dalam pemetaan angka-ke-ruang.`;
+    } else {
+      nleeStr += `Tingkat deviasi ini termasuk cukup akurat (di bawah batas ${THRESHOLDS.NLEE_PERCENT}%), menunjukkan pemahaman letak angka yang baik.`;
+    }
+  } else {
+    nleeStr = 'Anak belum menyelesaikan permainan estimasi angka.';
+  }
+
+  return { hi: hiStr, rr: rrStr, nlee: nleeStr };
+}
+
 /** Bangun Rencana Pendampingan dari template lokal — deterministik & offline. */
 export function generateLocalCompanionPlan(profile: ChildProfileForPlan): CompanionPlanResult {
   const { level, domains } = profile.assessment;
@@ -104,6 +156,7 @@ export function generateLocalCompanionPlan(profile: ChildProfileForPlan): Compan
       ...DYSCALCULIA_ACTIVITIES[domains.dyscalculia],
     ],
     referralGuidance: REFERRAL_GUIDANCE[level],
+    metricExplanations: explainMetrics(profile),
     disclaimer: SCREENING_DISCLAIMER,
   };
 }

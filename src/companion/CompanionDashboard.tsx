@@ -31,6 +31,7 @@ interface CompanionPlanResult {
   summary: string;
   companionActivities: string[];
   referralGuidance: string[];
+  metricExplanations: { hi: string; rr: string; nlee: string };
   disclaimer: string;
 }
 
@@ -72,8 +73,89 @@ const SAFETY_DISCLAIMER =
   "ReadiKids adalah alat skrining awal, BUKAN alat diagnosis. Hasil ini adalah pengamatan perilaku belajar — kepastian hanya bisa diberikan oleh profesional.";
 
 // ═══════════════════════════════════════════════════════════════════════════
-// UTIL — hitung jendela cooldown & format tanggal Indonesia
+// UTIL KOMPONEN BARU - Progress Bar Metrik
 // ═══════════════════════════════════════════════════════════════════════════
+
+const getLevelText = (score: number) => {
+  if (score >= 70) return "tinggi";
+  if (score >= 40) return "sedang";
+  return "rendah";
+};
+
+const getProgressBarStyles = (level: string) => {
+  if (level === "tinggi") return { fill: "bg-[#c84b38]", track: "bg-[#fbeceb]", text: "text-[#c84b38]" }; // Merah Bata
+  if (level === "sedang") return { fill: "bg-[#d99b26]", track: "bg-[#fdf4e7]", text: "text-[#d99b26]" }; // Kuning/Oren Gold
+  return { fill: "bg-[#1fa378]", track: "bg-[#eaf7f2]", text: "text-[#1fa378]" }; // Hijau Toska
+};
+
+const MetricProgressBar = ({ label, code, score, isMain = false }: { label: string; code: string; score: number, isMain?: boolean }) => {
+  const level = getLevelText(score);
+  const styles = getProgressBarStyles(level);
+
+  if (isMain) {
+    return (
+      <div className="flex flex-col gap-1.5 mb-6">
+        <div className="flex justify-between items-baseline text-[11px] font-bold text-gray-400 mb-1 px-1">
+          <span className="flex-1 text-center">{level === 'rendah' ? 'Rendah' : ''}</span>
+          <span className="flex-1 text-center">{level === 'sedang' ? 'Sedang' : ''}</span>
+          <span className="flex-1 text-center">{level === 'tinggi' ? 'Tinggi' : ''}</span>
+        </div>
+
+        {/* Desain 3 Bar Terpisah (Segmented Bar) */}
+        <div className="w-full h-4 flex gap-1.5 relative">
+          <div className={`flex-1 rounded-full ${level === 'rendah' ? 'bg-[#1fa378]' : 'bg-[#e9ecef]'}`}></div>
+          <div className={`flex-1 rounded-full ${level === 'sedang' ? 'bg-[#d99b26]' : 'bg-[#e9ecef]'}`}></div>
+          <div className={`flex-1 rounded-full ${level === 'tinggi' ? 'bg-[#c84b38]' : 'bg-[#e9ecef]'}`}></div>
+        </div>
+
+        <div className="mt-2 flex items-center justify-between">
+          <span className="font-black text-[#4a3728] text-sm">{label} ({code})</span>
+          <span className={`font-black text-sm uppercase tracking-wide ${styles.text}`}>{level}</span>
+        </div>
+        <div className="h-px bg-gray-200 my-4"></div>
+      </div>
+    );
+  }
+
+  // Fallback if ever called without isMain (though we will replace its usage below)
+  return null;
+};
+
+const MetricStatCard = ({
+  label,
+  code,
+  level,
+  statValue,
+  statCaption,
+  explanation
+}: {
+  label: string;
+  code: string;
+  level: string;
+  statValue: string;
+  statCaption: string;
+  explanation: string;
+}) => {
+  const styles = getProgressBarStyles(level);
+
+  return (
+    <div className="flex flex-col gap-2 mb-5 last:mb-0">
+      <div className="flex items-center gap-2">
+        <span className="font-bold text-[#4a3728] text-sm">{label} ({code})</span>
+        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${styles.fill} text-white`}>
+          {level}
+        </span>
+      </div>
+      <div className="flex items-baseline gap-2">
+        <span className={`text-2xl font-black ${styles.text}`}>{statValue}</span>
+        <span className="text-xs text-gray-400 font-medium">{statCaption}</span>
+      </div>
+      <p className="text-[13px] text-gray-500 leading-relaxed font-medium">
+        {explanation}
+      </p>
+    </div>
+  );
+};
 
 const BULAN = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
 
@@ -115,6 +197,8 @@ export default function CompanionDashboard({
 }: CompanionDashboardProps): JSX.Element {
   const [result, setResult] = useState<ScreeningResult | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const [isMisiRumahOpen, setIsMisiRumahOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -205,14 +289,59 @@ export default function CompanionDashboard({
             </div>
           </div>
 
+          {/* Skor Telemetri Internal (Hanya Mobile) */}
+          <div className="bg-white rounded-3xl rk-sticker p-5 flex flex-col">
+            <div className="flex items-baseline gap-1.5 mb-5">
+              <p className="font-black text-gray-500 text-xs tracking-wider uppercase">METRIK RESPONS</p>
+              <p className="font-normal text-gray-400 text-[10px]">(indikator permainan, bukan ukuran klinis)</p>
+            </div>
+
+            <MetricProgressBar label="Skor Keseluruhan" code="TOTAL" score={assessment.compositeScore} isMain={true} />
+
+            <MetricStatCard
+              label="Jeda ragu"
+              code="HI"
+              level={getLevelText(assessment.breakdown.hesitationScore)}
+              statValue={`${Math.round((assessment.metrics.totalTimeMs > 0 ? assessment.metrics.hesitationMs / assessment.metrics.totalTimeMs : 0) * 100)}%`}
+              statCaption="dari total waktu menjawab"
+              explanation={plan.metricExplanations.hi}
+            />
+            <MetricStatCard
+              label="Huruf cermin"
+              code="RR"
+              level={getLevelText(assessment.breakdown.reversalScore)}
+              statValue={assessment.metrics.normalLatencyMs > 0 ? `${(assessment.metrics.reversalLatencyMs / assessment.metrics.normalLatencyMs).toFixed(1)}×` : "—"}
+              statCaption="dibanding huruf biasa"
+              explanation={plan.metricExplanations.rr}
+            />
+            <MetricStatCard
+              label="Estimasi angka"
+              code="NLEE"
+              level={getLevelText(assessment.breakdown.nleeScore)}
+              statValue={assessment.metrics.nleePercent !== null ? `${Math.round(assessment.metrics.nleePercent)}%` : "—"}
+              statCaption="dari panjang garis"
+              explanation={plan.metricExplanations.nlee}
+            />
+          </div>
+
           {/* Misi rumah */}
-          <div className="bg-white rounded-3xl rk-sticker p-5">
-            <p className="font-black text-[#6b5a48] text-xs tracking-wider">MISI RUMAH MINGGU INI</p>
+          <div className="bg-white rounded-3xl rk-sticker p-5 flex flex-col">
+            <button
+              onClick={() => setIsMisiRumahOpen(!isMisiRumahOpen)}
+              className="flex items-center justify-between w-full text-left"
+            >
+              <p className="font-black text-[#6b5a48] text-xs tracking-wider">MISI RUMAH MINGGU INI</p>
+              <div className={`shrink-0 w-6 h-6 flex items-center justify-center text-[#8a7a66] transition-transform duration-300 origin-center ${isMisiRumahOpen ? 'rotate-180' : ''}`}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+            </button>
             <ul className="flex flex-col gap-3 mt-4">
               {plan.companionActivities.map((act, i) => (
-                <li key={i} className="flex items-start gap-3">
+                <li key={i} className={`flex items-start gap-3 ${!isMisiRumahOpen && i > 0 ? 'hidden' : ''}`}>
                   <span className="mt-0.5 shrink-0 w-6 h-6 rounded-full bg-[#eaf7e0] flex items-center justify-center text-xs font-black">{i + 1}</span>
-                  <span className="font-bold text-[#4a3728] text-[15px] leading-snug">{act}</span>
+                  <span className="font-bold text-[#4a3728] text-[15px] leading-snug line-clamp-2">{act}</span>
                 </li>
               ))}
             </ul>

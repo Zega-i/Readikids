@@ -181,22 +181,6 @@ export default function ChildProfileManager({
             </button>
           )}
 
-          {/* ── PREFERENSI ── */}
-          <p className="font-black text-[#8a7a66] text-xs tracking-[0.12em] uppercase mt-7 mb-2">Preferensi</p>
-          <div className="bg-white rounded-2xl rk-sticker px-4 py-3 flex items-center justify-between gap-3 min-h-[56px]">
-            <div className="flex items-center gap-3">
-              <span className="w-8 h-8 rounded-lg bg-[#eaf3ff] text-[#2b5c8a] flex items-center justify-center text-[10px] font-black shrink-0">abc</span>
-              <div>
-                <p className="font-black text-[#4a3728] text-sm">font ramah disleksia</p>
-                <p className="font-bold text-[#8a7a66] text-xs mt-0.5">segera hadir</p>
-              </div>
-            </div>
-            {/* toggle non-aktif (placeholder — fitur belum dibuat) */}
-            <span className="w-12 h-7 rounded-full bg-[#e0d7c6] relative shrink-0 opacity-70" aria-hidden="true">
-              <span className="absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow-sm" />
-            </span>
-          </div>
-
           {/* ── DATA & PRIVASI ── */}
           <p className="font-black text-[#8a7a66] text-xs tracking-[0.12em] uppercase mt-7 mb-2">Data &amp; Privasi</p>
           <button

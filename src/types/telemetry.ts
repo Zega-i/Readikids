@@ -169,6 +169,12 @@ export interface ChildProfileForPlan {
   companionNotes?: string;
 }
 
+export interface MetricExplanations {
+  hi: string;
+  rr: string;
+  nlee: string;
+}
+
 /** Rencana Pendampingan hasil generator (pengganti IEP pada v2). */
 export interface CompanionPlanResult {
   /** Sumber rencana: LLM via proxy Gemini ('gemini') atau 'local-template' (fallback offline). */
@@ -180,6 +186,8 @@ export interface CompanionPlanResult {
   companionActivities: string[];
   /** Panduan langkah rujukan ke layanan profesional. */
   referralGuidance: string[];
+  /** Analisis dinamis untuk metrik spesifik game */
+  metricExplanations: MetricExplanations;
   /** Disclaimer wajib — sistem ini bukan alat diagnosis. */
   disclaimer: string;
 }

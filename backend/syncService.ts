@@ -110,6 +110,7 @@ export async function pushAssessment(
             summary: plan.summary,
             companion_activities: plan.companionActivities,
             referral_guidance: plan.referralGuidance,
+            metric_explanations: plan.metricExplanations,
           }
         : {}),
     },

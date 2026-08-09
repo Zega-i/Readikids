@@ -353,9 +353,16 @@ export async function buildReferralReportPdf(input: ReferralReportInput): Promis
 
   // 5 — Ringkasan rencana pendampingan
   if (plan) {
-    w.heading(`${history.length > 0 ? 5 : 4}. Rencana Pendampingan yang Sedang Dijalankan`);
+    w.heading(`${history.length > 0 ? 5 : 4}. Rencana Pendampingan & Analisis Metrik`);
     w.paragraph(plan.summary);
     w.spacing(4);
+    if (plan.metricExplanations) {
+      w.bullet(plan.metricExplanations.hi);
+      w.bullet(plan.metricExplanations.rr);
+      w.bullet(plan.metricExplanations.nlee);
+      w.spacing(4);
+    }
+    w.paragraph('Aktivitas yang disarankan:', { bold: true });
     for (const activity of plan.companionActivities) w.bullet(activity);
   }
 

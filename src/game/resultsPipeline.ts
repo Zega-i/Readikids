@@ -150,6 +150,7 @@ export async function runScreeningPipeline(
       summary: plan.summary,
       companionActivities: plan.companionActivities,
       referralGuidance: plan.referralGuidance,
+      metricExplanations: plan.metricExplanations,
       disclaimer: plan.disclaimer,
       updatedAt: Date.now(),
     });
@@ -181,6 +182,7 @@ export async function runScreeningPipeline(
       summary: plan.summary,
       companionActivities: plan.companionActivities,
       referralGuidance: plan.referralGuidance,
+      metricExplanations: plan.metricExplanations,
       disclaimer: plan.disclaimer,
     },
   };
