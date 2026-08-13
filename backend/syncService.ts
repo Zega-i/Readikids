@@ -74,7 +74,7 @@ export async function pushSession(s: SessionRecord): Promise<SyncResult> {
       age_years: s.ageYears,
       started_at: s.startedAt,
       ended_at: s.endedAt,
-      games: s.games,
+      skills: s.skills,
       cooldown_override_reason: s.cooldownOverrideReason ?? null,
     },
     { onConflict: 'id' },
@@ -97,11 +97,11 @@ export async function pushAssessment(
     {
       session_id: a.sessionId,
       child_ref: a.childRef,
-      composite_score: a.compositeScore,
+      age_years: a.ageYears,
       level: a.level,
-      breakdown: a.breakdown,
-      domains: a.domains,
-      metrics: a.metrics,
+      highest_phase_reached: a.highestPhaseReached,
+      phase_age_gap: a.phaseAgeGap,
+      per_phase: a.perPhase,
       created_at: a.createdAt,
       // Kolom rencana (opsional) — lihat backend/schema.sql.
       ...(plan

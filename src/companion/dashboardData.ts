@@ -43,6 +43,7 @@ async function planForSession(
       referralGuidance: stored.referralGuidance,
       metricExplanations: stored.metricExplanations,
       disclaimer: stored.disclaimer,
+      ...(stored.aiUsage ? { aiUsage: stored.aiUsage } : {}),
     };
   }
   const plan = await generateCompanionPlan({ childRef, ageYears, assessment });
@@ -57,6 +58,7 @@ async function planForSession(
       referralGuidance: plan.referralGuidance,
       metricExplanations: plan.metricExplanations,
       disclaimer: plan.disclaimer,
+      ...(plan.aiUsage ? { aiUsage: plan.aiUsage } : {}),
       updatedAt: Date.now(),
     });
   } catch {
@@ -91,11 +93,10 @@ export async function getAllScreeningResults(profileId: string): Promise<Screeni
       startedAt: s.startedAt,
       endedAt: s.endedAt as number,
       assessment: {
-        compositeScore: assessment.compositeScore,
+        highestPhaseReached: assessment.highestPhaseReached,
+        phaseAgeGap: assessment.phaseAgeGap,
         level: assessment.level,
-        breakdown: assessment.breakdown,
-        domains: assessment.domains,
-        metrics: assessment.metrics,
+        perPhase: assessment.perPhase,
       },
       plan: {
         source: plan.source,
@@ -105,6 +106,7 @@ export async function getAllScreeningResults(profileId: string): Promise<Screeni
         referralGuidance: plan.referralGuidance,
         metricExplanations: plan.metricExplanations,
         disclaimer: plan.disclaimer,
+        ...(plan.aiUsage ? { aiUsage: plan.aiUsage } : {}),
       },
     });
   }
@@ -144,11 +146,10 @@ export async function getLatestScreeningResult(
     startedAt: last.startedAt,
     endedAt: last.endedAt as number,
     assessment: {
-      compositeScore: assessment.compositeScore,
+      highestPhaseReached: assessment.highestPhaseReached,
+      phaseAgeGap: assessment.phaseAgeGap,
       level: assessment.level,
-      breakdown: assessment.breakdown,
-      domains: assessment.domains,
-      metrics: assessment.metrics,
+      perPhase: assessment.perPhase,
     },
     plan: {
       source: plan.source,
@@ -158,6 +159,7 @@ export async function getLatestScreeningResult(
       referralGuidance: plan.referralGuidance,
       metricExplanations: plan.metricExplanations,
       disclaimer: plan.disclaimer,
+      ...(plan.aiUsage ? { aiUsage: plan.aiUsage } : {}),
     },
   };
 }
@@ -173,7 +175,8 @@ export async function getBerandaData(profileId: string): Promise<BerandaData> {
       return {
         sessionId: s.id,
         endedAt: s.endedAt as number,
-        domains: a ? a.domains : { dyslexia: 'LOW' as const, dyscalculia: 'LOW' as const },
+        highestPhaseReached: a ? a.highestPhaseReached : 0,
+        level: a ? a.level : ('LOW' as const),
       };
     }),
   );

@@ -2,18 +2,19 @@
  * ReadiKids AI — Behavioral Engine (feature extraction & progress tracking).
  *
  * Lapisan orkestrasi di atas MetricCalculator + heuristic:
- * - Mengambil trial dari DB, mengagregasi, menilai risiko, menyimpan hasil.
- * - Membandingkan hasil antar sesi untuk progress tracking (data
- *   observasi longitudinal untuk profesional).
+ * - Mengambil trial dari DB, mengagregasi per-fase, menilai, menyimpan hasil.
+ * - Membandingkan hasil antar sesi untuk progress tracking (observasi
+ *   longitudinal untuk pendamping/profesional).
+ *
+ * Arsitektur v2 (membaca): berbasis profil per-fase & gap fase–usia.
  */
 import { db } from '../telemetry/TelemetryDB';
-import { aggregateTrials } from '../telemetry/MetricCalculator';
-import { assessRisk } from '../ml/heuristic';
-import type { RiskAssessment, TrialRecord } from '../types/telemetry';
+import { assessReading } from '../ml/heuristic';
+import type { PhaseId, RiskAssessment, RiskLevel, TrialRecord } from '../types/telemetry';
 
 /**
- * Analisis satu sesi: baca seluruh trial dari IndexedDB,
- * hitung metrik + risiko, simpan RiskAssessment, dan kembalikan hasilnya.
+ * Analisis satu sesi: baca seluruh trial dari IndexedDB, hitung profil fase +
+ * level, simpan RiskAssessment, dan kembalikan hasilnya.
  */
 export async function analyzeSession(sessionId: string): Promise<RiskAssessment | null> {
   const session = await db.sessions.get(sessionId);
@@ -22,7 +23,7 @@ export async function analyzeSession(sessionId: string): Promise<RiskAssessment 
   const trials = await db.trials.where('sessionId').equals(sessionId).toArray();
   if (trials.length === 0) return null;
 
-  const assessment = buildAssessment(sessionId, session.childRef, trials);
+  const assessment = buildAssessment(sessionId, session.childRef, session.ageYears, trials);
   await db.riskAssessments.add(assessment);
   return assessment;
 }
@@ -31,18 +32,18 @@ export async function analyzeSession(sessionId: string): Promise<RiskAssessment 
 export function buildAssessment(
   sessionId: string,
   childRef: string,
+  ageYears: number,
   trials: TrialRecord[],
 ): RiskAssessment {
-  const metrics = aggregateTrials(trials);
-  return assessRisk({ sessionId, childRef, metrics });
+  return assessReading({ sessionId, childRef, ageYears, trials });
 }
 
 export interface ProgressPoint {
   sessionId: string;
   createdAt: number;
-  compositeScore: number;
-  hesitationIndex: number;
-  nleePercent: number | null;
+  highestPhaseReached: PhaseId;
+  phaseAgeGap: number;
+  level: RiskLevel;
 }
 
 /** Riwayat perkembangan satu anak lintas sesi (untuk grafik dashboard). */
@@ -55,21 +56,21 @@ export async function getChildProgress(childRef: string): Promise<ProgressPoint[
   return assessments.map((a: RiskAssessment) => ({
     sessionId: a.sessionId,
     createdAt: a.createdAt,
-    compositeScore: a.compositeScore,
-    hesitationIndex:
-      a.metrics.totalTimeMs > 0 ? a.metrics.hesitationMs / a.metrics.totalTimeMs : 0,
-    nleePercent: a.metrics.nleePercent,
+    highestPhaseReached: a.highestPhaseReached,
+    phaseAgeGap: a.phaseAgeGap,
+    level: a.level,
   }));
 }
 
 /**
- * Delta perkembangan antara dua penilaian (negatif = membaik).
- * Berguna untuk narasi otomatis di Companion Dashboard.
+ * Delta perkembangan antara dua penilaian. improving = gap fase–usia mengecil
+ * ATAU fase tertinggi bertambah. Berguna untuk narasi otomatis di dashboard.
  */
 export function computeProgressDelta(
   previous: RiskAssessment,
   current: RiskAssessment,
-): { scoreDelta: number; improving: boolean } {
-  const scoreDelta = current.compositeScore - previous.compositeScore;
-  return { scoreDelta, improving: scoreDelta < 0 };
+): { gapDelta: number; phaseDelta: number; improving: boolean } {
+  const gapDelta = current.phaseAgeGap - previous.phaseAgeGap;
+  const phaseDelta = current.highestPhaseReached - previous.highestPhaseReached;
+  return { gapDelta, phaseDelta, improving: gapDelta < 0 || phaseDelta > 0 };
 }

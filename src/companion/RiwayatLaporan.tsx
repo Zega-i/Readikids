@@ -27,11 +27,13 @@ function shortDate(ms: number): string {
 
 type Risk = "LOW" | "MEDIUM" | "HIGH";
 
-// Badge domain (dipakai versi desktop).
-const LEVEL_LABEL: Record<Risk, { text: string; color: string; dot: string; bg: string }> = {
-  LOW:    { text: "Tipikal",       color: "#2f5b23", dot: "#6dbb57", bg: "#eaf7e0" },
-  MEDIUM: { text: "Perlu diamati", color: "#9a6b00", dot: "#e8a53a", bg: "#fff6e9" },
-  HIGH:   { text: "Konsultasi",    color: "#1f6b6b", dot: "#2b8a8a", bg: "#eaf3ff" },
+// Nama ramah tiap tahap membaca (0-4).
+const PHASE_NAME: Record<number, string> = {
+  0: "Mengenal arah & bentuk",
+  1: "Mengenal huruf",
+  2: "Huruf & bunyi",
+  3: "Bermain dengan bunyi",
+  4: "Merangkai kata",
 };
 
 // Chip status ringkas per sesi (HP).
@@ -198,24 +200,12 @@ export default function RiwayatLaporan({ activeProfile, onBack, onOpenResult }: 
                       <span className="text-xl">📅</span>
                       <span className="font-black text-[#4a3728] text-base">{formatTanggal(res.endedAt)}</span>
                     </div>
-                    <div className="grid grid-cols-2 gap-3 max-w-sm">
-                      <div className="rounded-xl px-3 py-2 flex items-center gap-2 border shadow-sm border-white" style={{ backgroundColor: LEVEL_LABEL[res.assessment.domains.dyslexia].bg }}>
-                        <span className="text-lg">🔤</span>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] font-black text-[#4a3728] uppercase">Baca-Tulis</span>
-                          <span className="text-xs font-bold" style={{ color: LEVEL_LABEL[res.assessment.domains.dyslexia].color }}>
-                            {LEVEL_LABEL[res.assessment.domains.dyslexia].text}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="rounded-xl px-3 py-2 flex items-center gap-2 border shadow-sm border-white" style={{ backgroundColor: LEVEL_LABEL[res.assessment.domains.dyscalculia].bg }}>
-                        <span className="text-lg">🔢</span>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] font-black text-[#4a3728] uppercase">Berhitung</span>
-                          <span className="text-xs font-bold" style={{ color: LEVEL_LABEL[res.assessment.domains.dyscalculia].color }}>
-                            {LEVEL_LABEL[res.assessment.domains.dyscalculia].text}
-                          </span>
-                        </div>
+                    <div className="max-w-sm">
+                      <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 border border-white shadow-sm" style={{ background: "#eaf7e0" }}>
+                        <span className="text-base">🗺️</span>
+                        <span className="text-xs font-black" style={{ color: "#2f5b23" }}>
+                          Sampai tahap {PHASE_NAME[res.assessment.highestPhaseReached]}
+                        </span>
                       </div>
                     </div>
                   </div>

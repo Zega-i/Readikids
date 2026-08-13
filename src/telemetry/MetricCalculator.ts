@@ -1,146 +1,106 @@
 /**
- * ReadiKids AI — MetricCalculator.
+ * ReadiKids AI — MetricCalculator (arsitektur v2, membaca).
  *
- * Mengubah kumpulan TrialRecord menjadi TelemetryMetrics agregat,
- * lalu menghitung skor komposit risiko sesuai formulasi blueprint:
+ * Mengubah TrialRecord[] menjadi metrik per-skill lalu agregat per-fase.
+ * Model lama (komposit reversal/HI/NLEE 40/30/30) sudah dihapus.
  *
- * 1. Letter-Reversal Latency Ratio = latency(b/d/p/q) / latency(a/m/o)
- *    → Ratio > 2.5 mengindikasikan hambatan orientasi spasial huruf.
- * 2. Hesitation Index (HI) = waktu ragu / total waktu menjawab
- *    → HI > 0.35 menunjukkan keraguan kognitif.
- * 3. NLEE = |posisi jawaban − posisi target| / panjang garis × 100%
- *    → NLEE > 15% mengindikasikan defisit representasi mental angka.
+ * Alur: TrialRecord[] → computeSkillMetric (per skill) → aggregatePhase
+ * (per fase) → PhaseAggregate[]. Klasifikasi level & gap fase–usia ada di
+ * `ml/heuristic.ts`. Fungsi di sini MURNI (tanpa dependensi eksternal).
  *
- * Bobot komposit: reversal 40%, HI 30%, NLEE 30%.
- * Murni fungsi (pure) — tanpa dependensi eksternal, mudah diuji.
+ * CATATAN KALIBRASI: skor `reliability` dan pembobotan bersifat tentatif
+ * berbasis literatur — WAJIB dikalibrasi dari data lapangan (lihat CLAUDE.md).
  */
-import type { TelemetryMetrics, TrialRecord } from '../types/telemetry';
-
-/** Ambang riset (lihat Bab 6.2 blueprint). */
-export const THRESHOLDS = {
-  REVERSAL_RATIO: 2.5,
-  HESITATION_INDEX: 0.35,
-  NLEE_PERCENT: 15,
-} as const;
-
-/** Bobot skor komposit. */
-export const WEIGHTS = {
-  reversal: 0.4,
-  hesitation: 0.3,
-  nlee: 0.3,
-} as const;
+import type {
+  PhaseAggregate,
+  PhaseId,
+  SkillId,
+  SkillMetric,
+  TrialRecord,
+} from '../types/telemetry';
+import { SKILL_PHASE } from '../types/telemetry';
 
 const mean = (xs: number[]): number =>
   xs.length === 0 ? 0 : xs.reduce((a, b) => a + b, 0) / xs.length;
 
-/**
- * Hitung NLEE satu trial number line.
- * @param answerPos  posisi jawaban anak (px atau unit apa pun)
- * @param targetPos  posisi benar pada garis
- * @param lineLength panjang total garis (unit sama)
- */
-export function computeNLEE(answerPos: number, targetPos: number, lineLength: number): number {
-  if (lineLength <= 0) return 0;
-  return Math.min(100, (Math.abs(answerPos - targetPos) / lineLength) * 100);
+function median(xs: number[]): number {
+  if (xs.length === 0) return 0;
+  const s = [...xs].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 === 0 ? (s[mid - 1] + s[mid]) / 2 : s[mid];
 }
 
-/** Agregasi seluruh trial satu sesi menjadi metrik siap-skor. */
-export function aggregateTrials(trials: TrialRecord[]): TelemetryMetrics {
-  const visualTrials = trials.filter((t) => t.gameId === 'visual');
-  const reversal = visualTrials.filter((t) => t.isReversalTarget);
-  const normal = visualTrials.filter((t) => !t.isReversalTarget);
-  const nleeValues = trials
-    .filter((t) => t.gameId === 'numberline' && t.nleePercent !== null)
-    .map((t) => t.nleePercent as number);
-
-  const totalTimeMs = trials.reduce((a, t) => a + t.latencyMs, 0);
-  const hesitationMs = trials.reduce((a, t) => a + t.hesitationMs, 0);
-  const misclicks = trials.reduce((a, t) => a + t.misclickCount, 0);
-  const correct = trials.filter((t) => t.correct).length;
-
-  return {
-    normalLatencyMs: mean(normal.map((t) => t.latencyMs)),
-    reversalLatencyMs: mean(reversal.map((t) => t.latencyMs)),
-    hesitationMs,
-    totalTimeMs,
-    nleePercent: nleeValues.length > 0 ? mean(nleeValues) : null,
-    accuracy: trials.length > 0 ? correct / trials.length : 0,
-    misclickPerTrial: trials.length > 0 ? misclicks / trials.length : 0,
-    trialCount: trials.length,
-  };
-}
-
-export interface CompositeResult {
-  compositeScore: number;
-  reversalScore: number;
-  hesitationScore: number;
-  nleeScore: number;
-  /** Nilai mentah untuk ditampilkan di dashboard. */
-  raw: {
-    reversalRatio: number | null;
-    hesitationIndex: number;
-    nleePercent: number | null;
-  };
-}
+const clamp = (x: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, x));
 
 /**
- * Skor komposit 0–100.
+ * Metrik satu skill dari trial-trialnya. Soal demo (`isDemo`) diabaikan.
  *
- * Setiap sub-skor dinormalisasi terhadap ambang risetnya:
- * tepat di ambang = 100 poin sub-skor (indikasi kuat), lalu di-cap 100.
- *
- * Bila suatu metrik tidak tersedia (mis. game numberline belum
- * dimainkan → nlee null), bobotnya didistribusikan ulang secara
- * proporsional ke metrik yang ada, sehingga skor tetap 0–100.
+ * reliability = akurasi × konsistensi:
+ *  - akurasi = benar / item non-demo
+ *  - konsistensi = 1 − penalti keraguan (hesitationRatio, di-cap 0.5)
+ * Skala 0–100. Tentatif — kalibrasi lapangan.
  */
-export function calculateCompositeRiskScore(metrics: TelemetryMetrics): CompositeResult {
-  // 1. Letter-Reversal Latency Ratio
-  const hasReversal = metrics.reversalLatencyMs > 0 && metrics.normalLatencyMs > 0;
-  const reversalRatio = hasReversal
-    ? metrics.reversalLatencyMs / Math.max(1, metrics.normalLatencyMs)
-    : null;
-  const reversalScore =
-    reversalRatio === null
-      ? 0
-      : Math.min(100, (reversalRatio / THRESHOLDS.REVERSAL_RATIO) * 100);
+export function computeSkillMetric(trials: TrialRecord[]): SkillMetric {
+  const scored = trials.filter((t) => !t.isDemo);
+  const skillId: SkillId = trials[0]?.skillId ?? scored[0]?.skillId;
+  const phase: PhaseId = skillId ? SKILL_PHASE[skillId] : 0;
 
-  // 2. Hesitation Index
-  const hi = metrics.hesitationMs / Math.max(1, metrics.totalTimeMs);
-  const hesitationScore = Math.min(100, (hi / THRESHOLDS.HESITATION_INDEX) * 100);
+  const correct = scored.filter((t) => t.correct).length;
+  const accuracy = scored.length > 0 ? correct / scored.length : 0;
+  const medianLatencyMs = median(scored.map((t) => t.latencyMs));
+  const totalTime = scored.reduce((a, t) => a + t.latencyMs, 0);
+  const totalHes = scored.reduce((a, t) => a + t.hesitationMs, 0);
+  const hesitationRatio = totalTime > 0 ? clamp(totalHes / totalTime, 0, 1) : 0;
 
-  // 3. NLEE
-  const hasNlee = metrics.nleePercent !== null;
-  const nleeScore = hasNlee
-    ? Math.min(100, ((metrics.nleePercent as number) / THRESHOLDS.NLEE_PERCENT) * 100)
-    : 0;
-
-  // Redistribusi bobot bila ada metrik yang absen.
-  let wReversal = reversalRatio !== null ? WEIGHTS.reversal : 0;
-  let wHesitation = WEIGHTS.hesitation; // HI selalu tersedia bila ada trial
-  let wNlee = hasNlee ? WEIGHTS.nlee : 0;
-  const totalW = wReversal + wHesitation + wNlee;
-  if (totalW === 0) {
-    return {
-      compositeScore: 0,
-      reversalScore: 0,
-      hesitationScore: 0,
-      nleeScore: 0,
-      raw: { reversalRatio, hesitationIndex: hi, nleePercent: metrics.nleePercent },
-    };
+  const errorProfile: Record<string, number> = {};
+  for (const t of scored) {
+    if (!t.correct && t.errorType) {
+      errorProfile[t.errorType] = (errorProfile[t.errorType] ?? 0) + 1;
+    }
   }
-  wReversal /= totalW;
-  wHesitation /= totalW;
-  wNlee /= totalW;
 
-  const compositeScore = Math.round(
-    reversalScore * wReversal + hesitationScore * wHesitation + nleeScore * wNlee,
-  );
+  const consistency = 1 - Math.min(0.5, hesitationRatio);
+  const reliability = Math.round(accuracy * consistency * 100);
 
   return {
-    compositeScore,
-    reversalScore: Math.round(reversalScore),
-    hesitationScore: Math.round(hesitationScore),
-    nleeScore: Math.round(nleeScore),
-    raw: { reversalRatio, hesitationIndex: hi, nleePercent: metrics.nleePercent },
+    skillId,
+    phase,
+    accuracy,
+    medianLatencyMs,
+    hesitationRatio,
+    errorProfile,
+    itemsScored: scored.length,
+    reliability,
   };
+}
+
+/**
+ * Agregasi seluruh trial satu sesi menjadi PhaseAggregate[] (satu per fase
+ * yang punya data). Reliability fase = rata-rata reliability skill di fase.
+ */
+export function aggregateByPhase(trials: TrialRecord[]): PhaseAggregate[] {
+  // Kelompokkan per skill.
+  const bySkill = new Map<SkillId, TrialRecord[]>();
+  for (const t of trials) {
+    const arr = bySkill.get(t.skillId) ?? [];
+    arr.push(t);
+    bySkill.set(t.skillId, arr);
+  }
+  const skillMetrics: SkillMetric[] = [...bySkill.values()].map(computeSkillMetric);
+
+  // Kelompokkan skill per fase.
+  const byPhase = new Map<PhaseId, SkillMetric[]>();
+  for (const m of skillMetrics) {
+    const arr = byPhase.get(m.phase) ?? [];
+    arr.push(m);
+    byPhase.set(m.phase, arr);
+  }
+
+  return [...byPhase.entries()]
+    .map(([phase, skills]) => ({
+      phase,
+      reliability: Math.round(mean(skills.map((s) => s.reliability))),
+      skills,
+    }))
+    .sort((a, b) => a.phase - b.phase);
 }

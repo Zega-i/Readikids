@@ -22,6 +22,24 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+
+    // Konfigurasi untuk mengganti nama file APK output
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            def project = "ReadiKids"
+            def version = variant.versionName
+            // Format: ReadiKids-v1.0-release.apk atau ReadiKids-v1.0-debug.apk
+            def newApkName = "${project}-v${version}-${variant.buildType.name}.apk"
+            outputFileName = new ApkFileName(newApkName)
+        }
+    }
+}
+
+// Tambahkan class wrapper sederhana di bawah untuk compatibilitas Gradle versi baru
+class ApkFileName {
+    String name
+    ApkFileName(String name) { this.name = name }
+    @Override String toString() { return name }
 }
 
 repositories {

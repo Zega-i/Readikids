@@ -14,10 +14,10 @@
  */
 import type { Table } from 'dexie';
 import type {
-  GameId,
   SessionRecord,
   TelemetryEvent,
   TelemetryEventType,
+  TrialContext,
   TrialRecord,
 } from '../types/telemetry';
 
@@ -67,22 +67,26 @@ export class TelemetryLogger {
     this.flushTimer = setInterval(() => {
       void this.flush();
     }, FLUSH_INTERVAL_MS);
-    this.log('visual', 0, 'session_start');
+    this.log('session_start', null);
     return session.id;
   }
 
-  /** Catat satu event. Aman dipanggil dari loop 60 fps. */
+  /**
+   * Catat satu event. Aman dipanggil dari loop 60 fps.
+   * `ctx` = konteks skill/mekanik; null untuk event level-sesi.
+   */
   log(
-    gameId: GameId,
-    trialIndex: number,
     type: TelemetryEventType,
+    ctx: TrialContext | null,
     payload?: Record<string, unknown>,
   ): void {
     if (!this.sessionId) return; // sesi belum dimulai — abaikan diam-diam
     this.buffer.push({
       sessionId: this.sessionId,
-      gameId,
-      trialIndex,
+      skillId: ctx?.skillId ?? null,
+      mechanicId: ctx?.mechanicId ?? null,
+      phase: ctx?.phase ?? null,
+      trialIndex: ctx?.trialIndex ?? -1,
       type,
       t: this.now() - this.sessionStartT,
       payload,
@@ -120,7 +124,7 @@ export class TelemetryLogger {
   /** Akhiri sesi: flush terakhir + tutup SessionRecord. */
   async endSession(): Promise<void> {
     if (!this.sessionId) return;
-    this.log('visual', -1, 'session_end');
+    this.log('session_end', null);
     if (this.flushTimer) {
       clearInterval(this.flushTimer);
       this.flushTimer = null;

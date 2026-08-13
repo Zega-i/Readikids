@@ -12,7 +12,7 @@ const stepsCilo = [
   {
     icon: "🎒",
     title: "2 · anak bertualang",
-    description: "4 dunia · ±15 menit",
+    description: "5 dunia · ±15 menit",
   },
   {
     icon: "📖",
@@ -32,9 +32,7 @@ interface LandingPageProps {
   onStart: () => void;
 }
 
-export default function LandingPage({
-  onStart
-}: LandingPageProps): JSX.Element {
+export default function LandingPage({ onStart }: LandingPageProps): JSX.Element {
   const [statusMessage, setStatusMessage] = useState("");
   const [showInstallModal, setShowInstallModal] = useState(false);
 
@@ -129,6 +127,7 @@ export default function LandingPage({
               </div>
             ))}
           </div>
+
         </div>
       </section>
 

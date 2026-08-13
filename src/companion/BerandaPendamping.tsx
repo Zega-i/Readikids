@@ -13,7 +13,8 @@ type RiskLevel = "LOW" | "MEDIUM" | "HIGH";
 interface SessionSummary {
   sessionId: string;
   endedAt: number; // epoch ms
-  domains: { dyslexia: RiskLevel; dyscalculia: RiskLevel };
+  highestPhaseReached: number; // 0-4
+  level: RiskLevel;
 }
 
 export interface BerandaData {
@@ -57,11 +58,13 @@ function formatDayMon(ms: number): string {
 // Ikon selang-seling untuk baris misi rumah (dekoratif, mengikuti gaya mockup).
 const MISSION_ICONS = ["🪣", "📖", "🌱", "✏️", "🔤"];
 
-// Label ramah untuk status domain (tidak pernah HIGH/LOW mentah)
-const LEVEL_LABEL: Record<RiskLevel, { text: string; color: string; dot: string }> = {
-  LOW:    { text: "tipikal",       color: "#2f5b23", dot: "#6dbb57" },
-  MEDIUM: { text: "perlu diamati", color: "#9a6b00", dot: "#e8a53a" },
-  HIGH:   { text: "konsultasi",    color: "#1f6b6b", dot: "#2b8a8a" },
+// Nama ramah tiap tahap membaca (0-4) — untuk tampilan tren perjalanan.
+const PHASE_SHORT: Record<number, string> = {
+  0: "Arah & bentuk",
+  1: "Huruf",
+  2: "Huruf & bunyi",
+  3: "Bunyi kata",
+  4: "Merangkai kata",
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -473,10 +476,7 @@ export const BerandaPendamping = ({
                   <p className="font-black text-[#6b5a48] text-xs tracking-wider">
                     TREN {data!.recentSessions.length} PETUALANGAN TERAKHIR
                   </p>
-                  <TrendRow emoji="🔤" label="Baca-tulis"
-                    levels={data!.recentSessions.map((s) => s.domains.dyslexia)} />
-                  <TrendRow emoji="🔢" label="Berhitung"
-                    levels={data!.recentSessions.map((s) => s.domains.dyscalculia)} />
+                  <PhaseTrend phases={data!.recentSessions.map((s) => s.highestPhaseReached)} />
                 </div>
               )}
 
@@ -506,21 +506,19 @@ export const BerandaPendamping = ({
   );
 };
 
-// ── Baris tren: N bulatan status per domain (terlama→terbaru) ──
-const TrendRow = ({ emoji, label, levels }: { emoji: string; label: string; levels: RiskLevel[] }) => (
+// ── Baris tren: tahap membaca yang dicapai per sesi (terlama→terbaru) ──
+const PhaseTrend = ({ phases }: { phases: number[] }) => (
   <div className="flex items-center justify-between mt-4">
     <div className="flex items-center gap-2">
-      <span className="text-lg">{emoji}</span>
-      <span className="font-black text-[#4a3728] text-base">{label}</span>
+      <span className="text-lg">🗺️</span>
+      <span className="font-black text-[#4a3728] text-base">Tahap membaca</span>
     </div>
     <div className="flex items-center gap-2">
-      {levels.map((lv, i) => (
-        <span key={i} className="w-5 h-5 rounded-full border-2 border-white shadow-sm"
-          style={{ background: LEVEL_LABEL[lv].dot }} title={LEVEL_LABEL[lv].text} />
+      {phases.map((p, i) => (
+        <span key={i} className="w-6 h-6 rounded-full border-2 border-white shadow-sm flex items-center justify-center text-[11px] font-black"
+          style={{ background: "#eaf7e0", color: "#2f5b23" }} title={PHASE_SHORT[p]}>{p}</span>
       ))}
-      <span className="font-bold text-sm ml-1" style={{ color: LEVEL_LABEL[levels[levels.length - 1]].color }}>
-        {LEVEL_LABEL[levels[levels.length - 1]].text}
-      </span>
+      <span className="font-bold text-sm ml-1 text-[#2f5b23]">{PHASE_SHORT[phases[phases.length - 1]]}</span>
     </div>
   </div>
 );

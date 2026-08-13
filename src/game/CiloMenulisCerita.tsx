@@ -116,7 +116,7 @@ export const CiloMenulisCerita = ({
 
   // Kalimat "cerita" yang diketik huruf demi huruf (efek Cilo menulis).
   // Nama anak dibuat dinamis berdasarkan prop childName.
-  const previewText = `“${childName} lincah sekali di Bukit Angka!\nTapi di Hutan Huruf dia sering berhenti…`;
+  const previewText = `“${childName} lincah sekali di Padang Fondasi!\nTapi di Hutan Huruf dia sering berhenti…`;
 
   // ── Efek ketik: huruf demi huruf ──
   useEffect(() => {
@@ -126,47 +126,50 @@ export const CiloMenulisCerita = ({
   }, [typedChars, previewText.length]);
 
   return (
-    <main className="w-full h-[100dvh] bg-[linear-gradient(180deg,rgba(255,235,208,1)_0%,rgba(255,246,233,1)_100%)] relative overflow-hidden select-none font-nunito flex flex-col items-center justify-between text-[#4a3728]">
+    <main className="w-full h-[100dvh] bg-[linear-gradient(180deg,rgba(255,235,208,1)_0%,rgba(255,246,233,1)_100%)] relative overflow-hidden select-none font-nunito flex flex-col items-center text-[#4a3728]">
 
-      {/* Judul (beberapa baris) - dipindah sedikit lebih atas agar proporsional */}
-      <div className="shrink-0 text-center px-6 pt-12">
+      {/* Judul */}
+      <div className="shrink-0 text-center px-6 pt-9">
         <h1 className="font-black text-2xl leading-tight">Cilo sedang menulis<br />ceritamu…</h1>
         <p className="font-bold text-[#8a7a66] text-sm mt-2">untuk orangtua/wali 📖</p>
       </div>
 
-      {/* Kertas cerita + Cilo di pojok kanan bawah - diberi margin bawah agar tidak menabrak checklist */}
-      <div className="shrink-0 w-full flex items-center justify-center px-6 mb-8 mt-4">
+      {/* Ilustrasi: kertas + Cilo — satu wadah agar tidak menabrak checklist di bawah */}
+      <div className="flex-1 min-h-0 w-full flex items-center justify-center px-6 py-2">
         <div className="relative">
-          {/* Kilau ✨ — di LUAR kertas agar tidak terpotong */}
+          {/* Kilau ✨ — di luar kertas agar tidak terpotong */}
           <span className="absolute z-10 text-xl animate-[twinkle_1.4s_ease-in-out_infinite]" style={{ left: -14, top: -12 }}>✨</span>
           <span className="absolute z-10 text-base animate-[twinkle_1.8s_ease-in-out_infinite]" style={{ right: -8, top: 30 }}>✨</span>
 
-          {/* Kertas — kecil & memanjang ke bawah */}
-          <div className="relative bg-white rounded-[28px] shadow-[0px_10px_30px_rgba(74,55,40,0.12)] w-[236px] h-[320px] rotate-2 px-6 py-8">
-            {/* garis-garis kertas + baris cokelat yang sedang ditulis (diperpendek) */}
+          {/* Kertas — lurus (tanpa rotasi) agar rapi */}
+          <div className="relative bg-white rounded-[28px] shadow-[0px_10px_30px_rgba(74,55,40,0.12)] w-[236px] h-[320px] px-6 py-8">
             <div className="flex flex-col gap-[18px]">
+              {/* garis-garis kertas (statis) */}
               {[86, 94, 78, 90, 72].map((w, i) => (
                 <div key={i} className="h-2.5 rounded-full bg-[#e8dfce]" style={{ width: `${w}%` }} />
               ))}
-              <div className="relative h-2.5">
-                <div className="h-2.5 rounded-full bg-[#c98a4b] transition-all duration-100"
-                  style={{ width: Math.min(20 + typedChars * 2, 130) }} />
-                <span className="absolute -top-2 text-xl animate-[nib-bob_0.5s_ease-in-out_infinite]"
-                  style={{ left: Math.min(20 + typedChars * 2, 130) - 8 }}>✍️</span>
+              {/* baris yang sedang ditulis — dipisah agar tidak menempel garis statis */}
+              <div className="mt-1 h-10 flex flex-col justify-center">
+                <div className="relative h-2.5">
+                  <div className="h-2.5 rounded-full bg-[#c98a4b] transition-all duration-100"
+                    style={{ width: Math.min(20 + typedChars * 2, 130) }} />
+                  <span className="absolute -top-2 text-xl animate-[nib-bob_0.5s_ease-in-out_infinite]"
+                    style={{ left: Math.min(20 + typedChars * 2, 130) - 8 }}>✍️</span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Cilo mengintip dari pojok kanan bawah */}
-          <div className="absolute -bottom-3 -right-9 w-[118px] h-[142px] pointer-events-none">
-            <div className="absolute top-0 left-0 scale-[0.4] origin-top-left"><Cilo /></div>
-            <span className="absolute left-[68px] top-[90px] text-2xl rotate-[35deg]">✏️</span>
+          {/* Cilo mengintip — tetap berada dalam wadah ilustrasi */}
+          <div className="absolute -right-4 -bottom-1 w-[110px] h-[130px] pointer-events-none">
+            <div className="absolute top-0 left-0 scale-[0.38] origin-top-left"><Cilo /></div>
+            <span className="absolute left-[60px] top-[82px] text-2xl rotate-[35deg]">✏️</span>
           </div>
         </div>
       </div>
 
-      {/* Checklist status — bertumpuk */}
-      <div className="shrink-0 w-full max-w-sm px-6 pb-2">
+      {/* Checklist status — kartu terpisah di bawah ilustrasi */}
+      <div className="shrink-0 w-full max-w-sm px-6 pb-3">
         <div className="bg-white rounded-3xl rk-sticker p-4 flex flex-col gap-2.5">
           {STAGES.map((s, i) => {
             const state = i < stageIndex ? "done" : i === stageIndex ? "active" : "pending";
@@ -180,7 +183,7 @@ export const CiloMenulisCerita = ({
       </div>
 
       {/* Footer */}
-      <div className="shrink-0 pt-3 pb-8 text-center px-6">
+      <div className="shrink-0 pt-2 pb-6 text-center px-6">
         <p className="font-bold text-[#a98f6f] text-xs">
           hanya untuk pendamping · anak tidak melihat layar ini
         </p>

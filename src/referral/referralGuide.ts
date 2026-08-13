@@ -30,8 +30,8 @@ export const REFERRAL_SERVICES: ReferralService[] = [
   {
     name: 'Psikolog Anak / Biro Psikologi',
     description:
-      'Profesional yang berwenang melakukan asesmen psikoedukasi lengkap, termasuk memastikan ' +
-      'ada-tidaknya disleksia, diskalkulia, atau kondisi lain yang memengaruhi belajar.',
+      'Profesional yang berwenang melakukan asesmen psikoedukasi lengkap untuk memahami ' +
+      'penyebab dan bentuk hambatan belajar/membaca anak, serta cara mendukungnya.',
     howToAccess:
       'Tersedia di rumah sakit (poli jiwa/psikologi anak), biro psikologi swasta, atau layanan ' +
       'psikologi kampus. Asesmen umumnya berbayar; sebagian ditanggung BPJS melalui rujukan puskesmas.',
@@ -61,21 +61,21 @@ export const WHEN_TO_SEEK_HELP: Record<RiskLevel, string> = {
   LOW:
     'Saat ini belum ada pola yang mengharuskan konsultasi. Lanjutkan aktivitas pendampingan, ' +
     'dan lakukan skrining ulang dalam 1-3 bulan. Bila sehari-hari anak tampak jauh lebih ' +
-    'kesulitan membaca/berhitung dibanding anak seusianya, konsultasi tetap terbuka kapan saja.',
+    'kesulitan membaca dibanding anak seusianya, mengobrol dengan guru tetap terbuka kapan saja.',
   MEDIUM:
     'Jalankan aktivitas pendampingan selama 2-4 minggu sambil mengamati anak, lalu lakukan ' +
     'skrining ulang. Bila polanya menetap atau bertambah, jadwalkan konsultasi ke puskesmas ' +
     'atau psikolog anak dengan membawa laporan ini.',
   HIGH:
-    'Disarankan menjadwalkan konsultasi dalam waktu dekat ke salah satu layanan di bawah. ' +
-    'Ini BUKAN berarti anak pasti mengalami disleksia/diskalkulia - hasil skrining hanya ' +
-    'menunjukkan pola yang sebaiknya diperiksa profesional lebih awal, karena pendampingan ' +
-    'yang dimulai dini memberi hasil terbaik.',
+    'Tidak ada salahnya menjadwalkan obrolan dengan salah satu layanan di bawah dalam waktu dekat. ' +
+    'Ini BUKAN berarti ada sesuatu yang pasti salah pada anak - hasil skrining hanya menunjukkan ' +
+    'pola yang sebaiknya dikenali profesional lebih awal, karena pendampingan yang dimulai dini ' +
+    'memberi hasil terbaik.',
 };
 
 /** Hal-hal yang berguna dibawa/disampaikan saat konsultasi. */
 export const CONSULTATION_CHECKLIST: string[] = [
-  'Laporan Rujukan dari aplikasi ini (berisi metrik dan riwayat sesi).',
+  'Laporan dari aplikasi ini (berisi pengamatan dan riwayat sesi).',
   'Contoh pekerjaan anak: buku tulis, hasil menggambar/menulis, PR.',
   'Catatan pengamatan sehari-hari: kapan anak kesulitan, bagaimana reaksinya.',
   'Riwayat kesehatan singkat: pendengaran, penglihatan, riwayat kelahiran.',

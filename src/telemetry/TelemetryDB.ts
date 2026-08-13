@@ -92,6 +92,23 @@ export class ReadiKidsDB extends Dexie {
     this.version(4).stores({
       companionPlans: 'sessionId, childRef',
     });
+
+    // v5: PIVOT arsitektur v2 (skrining membaca, 5 fase). Indeks
+    // [sessionId+gameId] → [sessionId+skillId] mengikuti kontrak baru.
+    // Data lama (GameId visual/phonics/numberline & assessment komposit)
+    // TIDAK dikonversi — skema penilaiannya berbeda total → diperlakukan LEGACY.
+    this.version(5)
+      .stores({
+        events: '++id, sessionId, [sessionId+skillId], t',
+        trials: '++id, sessionId, [sessionId+skillId], completedAt',
+        riskAssessments: '++id, sessionId, childRef, createdAt',
+      })
+      .upgrade(async (tx) => {
+        // Kosongkan hasil penilaian lama: bentuknya (compositeScore/domains)
+        // tak lagi valid di skema baru. Event/trial mentah dibiarkan (legacy)
+        // — dashboard hanya menampilkan assessment skema baru.
+        await tx.table('riskAssessments').clear();
+      });
   }
 }
 

@@ -1,89 +1,127 @@
 /**
- * ReadiKids AI — Client-Side Heuristic Risk Engine (Layer 1).
+ * ReadiKids AI — Heuristic Reading-Phase Engine (arsitektur v2).
  *
- * Mengubah skor komposit + metrik mentah menjadi RiskAssessment:
- * - Level keseluruhan (LOW / MEDIUM / HIGH)
- * - Indikasi per domain (disleksia vs diskalkulia)
+ * Mengubah agregat per-fase (MetricCalculator) → RiskAssessment:
+ * - level observasi per fase (LOW/MEDIUM/HIGH)
+ * - fase tertinggi yang dicapai andal (kontigu dari fase 0)
+ * - gap fase–usia → level indikasi keseluruhan
  *
- * PENTING: Output adalah INDIKASI SKRINING, bukan diagnosis medis.
+ * PENTING: output adalah OBSERVASI perkembangan membaca, BUKAN diagnosis.
+ * Semua ambang & norma usia bersifat TENTATIF — wajib kalibrasi lapangan.
  */
-import {
-  calculateCompositeRiskScore,
-  THRESHOLDS,
-} from '../telemetry/MetricCalculator';
+import { aggregateByPhase } from '../telemetry/MetricCalculator';
 import type {
+  PhaseAggregate,
+  PhaseId,
+  PhaseResult,
   RiskAssessment,
   RiskLevel,
-  TelemetryMetrics,
+  TrialRecord,
 } from '../types/telemetry';
 
-/** Ambang level skor komposit (0–100). */
-export const LEVEL_THRESHOLDS = {
-  /** score < MEDIUM → LOW */
-  MEDIUM: 40,
-  /** score >= HIGH → HIGH */
-  HIGH: 70,
+/**
+ * Ambang reliability (0–100) untuk level observasi per fase.
+ * reliability ≥ REACHED → fase dianggap dikuasai (LOW).
+ * Tentatif — kalibrasi lapangan.
+ */
+export const PHASE_THRESHOLDS = {
+  /** ≥ ini → fase "dicapai andal" & level LOW. */
+  REACHED: 70,
+  /** ≥ ini (tapi < REACHED) → MEDIUM; di bawah ini → HIGH. */
+  WATCH: 45,
 } as const;
 
-export function classifyLevel(score: number): RiskLevel {
-  if (score >= LEVEL_THRESHOLDS.HIGH) return 'HIGH';
-  if (score >= LEVEL_THRESHOLDS.MEDIUM) return 'MEDIUM';
-  return 'LOW';
+/**
+ * Fase yang diharapkan sudah dikuasai per usia (norma AWAL, tentatif).
+ * Ehri: full alphabetic ~usia 6–7; consolidated ~usia 7–8.
+ */
+export const PHASE_AGE_EXPECTATION: Record<number, PhaseId> = {
+  6: 2,
+  7: 3,
+  8: 4,
+  9: 4,
+};
+
+/** Level observasi satu fase dari reliability-nya. */
+export function classifyPhaseLevel(reliability: number): RiskLevel {
+  if (reliability >= PHASE_THRESHOLDS.REACHED) return 'LOW';
+  if (reliability >= PHASE_THRESHOLDS.WATCH) return 'MEDIUM';
+  return 'HIGH';
 }
 
-/**
- * Indikasi domain disleksia: gabungan reversal ratio + hesitation index.
- * Indikasi domain diskalkulia: NLEE.
- */
-function classifyDomains(
-  metrics: TelemetryMetrics,
-  reversalScore: number,
-  hesitationScore: number,
-  nleeScore: number,
-): RiskAssessment['domains'] {
-  // Disleksia — bobot internal: reversal 60%, hesitation 40%.
-  const dyslexiaScore = reversalScore * 0.6 + hesitationScore * 0.4;
-  // Diskalkulia — NLEE adalah sinyal utama; tanpa data numberline → LOW.
-  const dyscalculiaScore = metrics.nleePercent === null ? 0 : nleeScore;
-
-  return {
-    dyslexia: classifyLevel(Math.round(dyslexiaScore)),
-    dyscalculia: classifyLevel(Math.round(dyscalculiaScore)),
-  };
+/** Level indikasi keseluruhan dari gap fase–usia. */
+export function classifyGapLevel(gap: number): RiskLevel {
+  if (gap <= 0) return 'LOW';
+  if (gap === 1) return 'MEDIUM';
+  return 'HIGH';
 }
 
 export interface AssessInput {
   sessionId: string;
   childRef: string;
-  metrics: TelemetryMetrics;
+  ageYears: number;
+  /** Agregat per fase; bila absen, dihitung dari `trials`. */
+  phases?: PhaseAggregate[];
+  trials?: TrialRecord[];
 }
 
-/** Jalankan penilaian risiko lengkap dari metrik agregat. */
-export function assessRisk({ sessionId, childRef, metrics }: AssessInput): RiskAssessment {
-  const composite = calculateCompositeRiskScore(metrics);
-  const level = classifyLevel(composite.compositeScore);
-  const domains = classifyDomains(
-    metrics,
-    composite.reversalScore,
-    composite.hesitationScore,
-    composite.nleeScore,
-  );
+/**
+ * Fase tertinggi yang dicapai andal: fase terbesar `p` sedemikian sehingga
+ * SEMUA fase 0..p berhasil dicapai (reliability ≥ REACHED). Kontigu — satu
+ * fase gagal menghentikan rantai (fondasi harus kokoh dulu).
+ */
+function highestContiguousPhase(byPhase: Map<PhaseId, PhaseAggregate>): PhaseId {
+  let highest: PhaseId = 0;
+  let anyReached = false;
+  for (let p = 0 as PhaseId; p <= 4; p = (p + 1) as PhaseId) {
+    const agg = byPhase.get(p);
+    if (agg && agg.reliability >= PHASE_THRESHOLDS.REACHED) {
+      highest = p;
+      anyReached = true;
+    } else {
+      break;
+    }
+  }
+  // Bila fase 0 pun tak tercapai, kembalikan -1 secara semantik lewat gap;
+  // di sini kita tetap 0 sebagai lantai, flag ditangani gap.
+  return anyReached ? highest : (0 as PhaseId);
+}
+
+/** Penilaian membaca lengkap dari agregat fase (atau trial mentah). */
+export function assessReading({
+  sessionId,
+  childRef,
+  ageYears,
+  phases,
+  trials,
+}: AssessInput): RiskAssessment {
+  const aggs = phases ?? (trials ? aggregateByPhase(trials) : []);
+  const byPhase = new Map<PhaseId, PhaseAggregate>(aggs.map((a) => [a.phase, a]));
+
+  const perPhase: PhaseResult[] = aggs.map((a) => ({
+    ...a,
+    reached: a.reliability >= PHASE_THRESHOLDS.REACHED,
+    level: classifyPhaseLevel(a.reliability),
+  }));
+
+  const fase0Reached = (byPhase.get(0)?.reliability ?? 0) >= PHASE_THRESHOLDS.REACHED;
+  const highestPhaseReached = highestContiguousPhase(byPhase);
+  const expected = PHASE_AGE_EXPECTATION[ageYears] ?? 4;
+
+  // Bila fondasi (fase 0) tak tercapai, perlakukan sebagai "belum mencapai
+  // fase mana pun" → gap dihitung dari −1 agar sinyalnya kuat.
+  const effectiveReached = fase0Reached ? highestPhaseReached : -1;
+  const phaseAgeGap = expected - effectiveReached;
+  const level = classifyGapLevel(phaseAgeGap);
 
   return {
     sessionId,
     childRef,
+    ageYears,
     createdAt: Date.now(),
-    compositeScore: composite.compositeScore,
+    highestPhaseReached,
+    phaseAgeGap,
     level,
-    breakdown: {
-      reversalScore: composite.reversalScore,
-      hesitationScore: composite.hesitationScore,
-      nleeScore: composite.nleeScore,
-    },
-    domains,
-    metrics,
+    perPhase,
   };
 }
-
-/** Ekspor ulang ambang riset agar dashboard cukup impor dari satu tempat. */
-export { THRESHOLDS };

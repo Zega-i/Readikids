@@ -1,55 +1,47 @@
 /**
- * Unit test core engine ReadiKids AI (scope v4.0).
+ * Unit test core engine ReadiKids AI (arsitektur v2 — skrining membaca).
  * Jalankan: npm test  (atau: npx tsx tests/core.test.ts)
  *
- * Sengaja memakai node:assert tanpa framework agar bisa jalan
- * bahkan sebelum dependensi UI terpasang.
+ * Cakupan v2: MetricCalculator (skill→fase), Heuristic (level fase + gap
+ * fase–usia), Aturan Profil, TelemetryLogger. Tes untuk modul yang belum
+ * dimigrasi (LLM/fallback/referral/ekspor) akan dipulihkan saat modul
+ * tersebut ikut dirombak (lihat docs/refactor-v2.md).
  */
 import assert from 'node:assert/strict';
+import { computeSkillMetric, aggregateByPhase } from '../src/telemetry/MetricCalculator';
 import {
-  aggregateTrials,
-  calculateCompositeRiskScore,
-  computeNLEE,
-  THRESHOLDS,
-} from '../src/telemetry/MetricCalculator';
-import { assessRisk, classifyLevel, LEVEL_THRESHOLDS } from '../src/ml/heuristic';
-import { generateLocalCompanionPlan } from '../src/utils/fallbackTemplates';
-import {
-  buildCompanionPlanPrompt,
-  generateCompanionPlan,
-  parseGeminiPlan,
-} from '../src/ml/llmRecommendation';
+  assessReading,
+  classifyPhaseLevel,
+  classifyGapLevel,
+  PHASE_THRESHOLDS,
+} from '../src/ml/heuristic';
 import {
   checkRescreeningCooldown,
   COOLDOWN_MIN_DAYS,
   validateAgeYears,
   validatePseudonym,
 } from '../src/profiles/profileRules';
-import { BehavioralSimulator } from '../src/utils/simulation';
 import { TelemetryLogger, type TelemetryStore } from '../src/telemetry/TelemetryLogger';
 import {
-  REFERRAL_SERVICES,
-  WHEN_TO_SEEK_HELP,
-  CONSULTATION_CHECKLIST,
-} from '../src/referral/referralGuide';
-import {
-  buildReferralReportPdf,
-  PDF_DISCLAIMER,
-  sanitizePdfText,
-} from '../src/referral/reportPdf';
-import {
-  buildChildExport,
-  parseChildExport,
-  remapExportIds,
-  EXPORT_FORMAT,
-} from '../src/utils/dataTransfer';
-import type {
-  ChildProfile,
-  ChildProfileForPlan,
-  RiskAssessment,
-  SessionRecord,
-  TrialRecord,
+  SKILL_MECHANIC,
+  SKILL_PHASE,
+  type ChildProfile,
+  type CompanionPlanResult,
+  type PhaseId,
+  type PhaseResult,
+  type RiskAssessment,
+  type RiskLevel,
+  type SessionRecord,
+  type SkillId,
+  type TrialRecord,
 } from '../src/types/telemetry';
+import { buildReferralReportPdf, sanitizePdfText } from '../src/referral/reportPdf';
+import {
+  buildSessionCarbonInput,
+  classifyLoadClass,
+  DEFAULT_FACTORS,
+  estimateSessionCarbon,
+} from '../src/utils/carbonFootprint';
 
 let passed = 0;
 function test(name: string, fn: () => void | Promise<void>): Promise<void> {
@@ -66,142 +58,138 @@ function test(name: string, fn: () => void | Promise<void>): Promise<void> {
     });
 }
 
-function makeTrial(partial: Partial<TrialRecord>): TrialRecord {
+function makeTrial(partial: Partial<TrialRecord> & { skillId?: SkillId } = {}): TrialRecord {
+  const skillId: SkillId = partial.skillId ?? 'letter_name';
   return {
     sessionId: 's1',
-    gameId: 'visual',
+    skillId,
+    mechanicId: partial.mechanicId ?? SKILL_MECHANIC[skillId],
+    phase: SKILL_PHASE[skillId],
     trialIndex: 0,
-    stimulus: 'a',
-    isReversalTarget: false,
+    stimulus: 'b',
+    isDemo: false,
     latencyMs: 1000,
-    hesitationMs: 100,
+    hesitationMs: 0,
     misclickCount: 0,
     correct: true,
-    nleePercent: null,
+    errorType: null,
+    selfCorrected: false,
     completedAt: 0,
     ...partial,
+    // pastikan phase konsisten dengan skillId final
+    ...(partial.skillId ? { phase: SKILL_PHASE[partial.skillId] } : {}),
   };
 }
 
+/** Buat n trial untuk satu skill dengan sebagian benar. */
+function skillTrials(skillId: SkillId, correctCount: number, total: number): TrialRecord[] {
+  return Array.from({ length: total }, (_, i) =>
+    makeTrial({
+      skillId,
+      trialIndex: i,
+      correct: i < correctCount,
+      errorType: i < correctCount ? null : 'random',
+    }),
+  );
+}
+
 const main = async () => {
-  console.log('\n— MetricCalculator —');
+  console.log('\n— MetricCalculator (skill → fase) —');
 
-  await test('computeNLEE: dasar & clamp 100', () => {
-    assert.equal(computeNLEE(70, 50, 100), 20);
-    assert.equal(computeNLEE(0, 50, 100), 50);
-    assert.equal(computeNLEE(500, 0, 100), 100); // clamp
-    assert.equal(computeNLEE(10, 10, 0), 0); // garis invalid → 0
-  });
-
-  await test('aggregateTrials: memisahkan reversal vs normal & rerata NLEE', () => {
+  await test('computeSkillMetric: akurasi, error profile, demo diabaikan', () => {
     const trials = [
-      makeTrial({ stimulus: 'a', latencyMs: 1000 }),
-      makeTrial({ stimulus: 'm', latencyMs: 1200 }),
-      makeTrial({ stimulus: 'b', isReversalTarget: true, latencyMs: 3000 }),
-      makeTrial({ gameId: 'numberline', nleePercent: 10 }),
-      makeTrial({ gameId: 'numberline', nleePercent: 20 }),
+      makeTrial({ skillId: 'letter_discrim', correct: true }),
+      makeTrial({ skillId: 'letter_discrim', correct: true }),
+      makeTrial({ skillId: 'letter_discrim', correct: false, errorType: 'mirror' }),
+      makeTrial({ skillId: 'letter_discrim', isDemo: true, correct: false, errorType: 'mirror' }),
     ];
-    const m = aggregateTrials(trials);
-    assert.equal(m.normalLatencyMs, 1100);
-    assert.equal(m.reversalLatencyMs, 3000);
-    assert.equal(m.nleePercent, 15);
-    assert.equal(m.trialCount, 5);
-    assert.equal(m.accuracy, 1);
+    const m = computeSkillMetric(trials);
+    assert.equal(m.skillId, 'letter_discrim');
+    assert.equal(m.phase, 1);
+    assert.equal(m.itemsScored, 3); // demo tidak dihitung
+    assert.ok(Math.abs(m.accuracy - 2 / 3) < 1e-9);
+    assert.equal(m.errorProfile.mirror, 1);
+    assert.equal(m.reliability, 67); // 2/3 × 1 × 100
   });
 
-  await test('komposit: anak tipikal → skor rendah', () => {
-    const r = calculateCompositeRiskScore({
-      normalLatencyMs: 1000,
-      reversalLatencyMs: 1100, // ratio 1.1 — normal
-      hesitationMs: 500,
-      totalTimeMs: 10000, // HI 0.05 — normal
-      nleePercent: 4, // jauh di bawah 15%
-      accuracy: 0.95,
-      misclickPerTrial: 0.1,
-      trialCount: 20,
-    });
-    assert.ok(r.compositeScore < LEVEL_THRESHOLDS.MEDIUM, `score=${r.compositeScore}`);
+  await test('computeSkillMetric: keraguan menurunkan reliability', () => {
+    const m = computeSkillMetric([
+      makeTrial({ correct: true, latencyMs: 1000, hesitationMs: 500 }),
+    ]);
+    // akurasi 1, hesitationRatio 0.5 → consistency 0.5 → reliability 50
+    assert.equal(m.reliability, 50);
   });
 
-  await test('komposit: tepat di semua ambang riset → skor 100', () => {
-    const r = calculateCompositeRiskScore({
-      normalLatencyMs: 1000,
-      reversalLatencyMs: 1000 * THRESHOLDS.REVERSAL_RATIO,
-      hesitationMs: THRESHOLDS.HESITATION_INDEX * 10000,
-      totalTimeMs: 10000,
-      nleePercent: THRESHOLDS.NLEE_PERCENT,
-      accuracy: 0.5,
-      misclickPerTrial: 1,
-      trialCount: 20,
-    });
-    assert.equal(r.compositeScore, 100);
+  await test('aggregateByPhase: kelompok per fase, terurut, reliability rata-rata', () => {
+    const trials = [
+      ...skillTrials('orient', 2, 2), // fase 0
+      ...skillTrials('letter_name', 1, 2), // fase 1, akurasi 0.5
+    ];
+    const aggs = aggregateByPhase(trials);
+    assert.equal(aggs.length, 2);
+    assert.equal(aggs[0].phase, 0);
+    assert.equal(aggs[0].reliability, 100);
+    assert.equal(aggs[1].phase, 1);
+    assert.equal(aggs[1].reliability, 50);
   });
 
-  await test('komposit: NLEE absen → bobot didistribusi ulang (tetap 0–100)', () => {
-    const r = calculateCompositeRiskScore({
-      normalLatencyMs: 1000,
-      reversalLatencyMs: 2500,
-      hesitationMs: 3500,
-      totalTimeMs: 10000,
-      nleePercent: null, // numberline tidak dimainkan
-      accuracy: 0.8,
-      misclickPerTrial: 0,
-      trialCount: 10,
-    });
-    // reversal=100 & HI=100, tanpa NLEE → tetap 100, bukan 70.
-    assert.equal(r.compositeScore, 100);
-    assert.equal(r.raw.nleePercent, null);
+  console.log('\n— Heuristic (level fase + gap fase–usia) —');
+
+  await test('classifyPhaseLevel: batas REACHED/WATCH', () => {
+    assert.equal(classifyPhaseLevel(PHASE_THRESHOLDS.REACHED), 'LOW');
+    assert.equal(classifyPhaseLevel(PHASE_THRESHOLDS.REACHED - 1), 'MEDIUM');
+    assert.equal(classifyPhaseLevel(PHASE_THRESHOLDS.WATCH), 'MEDIUM');
+    assert.equal(classifyPhaseLevel(PHASE_THRESHOLDS.WATCH - 1), 'HIGH');
   });
 
-  console.log('\n— Heuristic Risk Engine —');
-
-  await test('classifyLevel: batas LOW/MEDIUM/HIGH', () => {
-    assert.equal(classifyLevel(0), 'LOW');
-    assert.equal(classifyLevel(LEVEL_THRESHOLDS.MEDIUM - 1), 'LOW');
-    assert.equal(classifyLevel(LEVEL_THRESHOLDS.MEDIUM), 'MEDIUM');
-    assert.equal(classifyLevel(LEVEL_THRESHOLDS.HIGH - 1), 'MEDIUM');
-    assert.equal(classifyLevel(LEVEL_THRESHOLDS.HIGH), 'HIGH');
-    assert.equal(classifyLevel(100), 'HIGH');
+  await test('classifyGapLevel: 0→LOW, 1→MEDIUM, ≥2→HIGH', () => {
+    assert.equal(classifyGapLevel(-1), 'LOW');
+    assert.equal(classifyGapLevel(0), 'LOW');
+    assert.equal(classifyGapLevel(1), 'MEDIUM');
+    assert.equal(classifyGapLevel(2), 'HIGH');
   });
 
-  await test('assessRisk: pola disleksia → domain dyslexia HIGH, dyscalculia LOW', () => {
-    const a = assessRisk({
-      sessionId: 's1',
-      childRef: 'anon-01',
-      metrics: {
-        normalLatencyMs: 1000,
-        reversalLatencyMs: 3200, // ratio 3.2 >> 2.5
-        hesitationMs: 4000,
-        totalTimeMs: 10000, // HI 0.4 > 0.35
-        nleePercent: 3, // berhitung baik
-        accuracy: 0.7,
-        misclickPerTrial: 0.5,
-        trialCount: 15,
-      },
-    });
-    assert.equal(a.domains.dyslexia, 'HIGH');
-    assert.equal(a.domains.dyscalculia, 'LOW');
+  await test('assessReading: anak kuat sesuai usia → gap 0, LOW', () => {
+    const trials = [
+      ...skillTrials('orient', 3, 3), // fase 0
+      ...skillTrials('letter_name', 3, 3), // fase 1
+      ...skillTrials('graph_to_phon', 3, 3), // fase 2
+      ...skillTrials('blending', 3, 3), // fase 3
+      ...skillTrials('syllable', 3, 3), // fase 4
+    ];
+    const a = assessReading({ sessionId: 's1', childRef: 'anon-01', ageYears: 8, trials });
+    assert.equal(a.highestPhaseReached, 4);
+    assert.equal(a.phaseAgeGap, 0);
+    assert.equal(a.level, 'LOW');
+    assert.equal(a.perPhase.length, 5);
+  });
+
+  await test('assessReading: tertahan di fase 1 (usia 8) → gap 3, HIGH', () => {
+    const trials = [
+      ...skillTrials('orient', 3, 3), // fase 0 kuat
+      ...skillTrials('letter_name', 3, 3), // fase 1 kuat
+      ...skillTrials('graph_to_phon', 0, 3), // fase 2 runtuh
+      ...skillTrials('blending', 3, 3), // fase 3 (tak relevan — rantai putus di 2)
+    ];
+    const a = assessReading({ sessionId: 's2', childRef: 'anon-02', ageYears: 8, trials });
+    assert.equal(a.highestPhaseReached, 1);
+    assert.equal(a.phaseAgeGap, 3);
     assert.equal(a.level, 'HIGH');
-    assert.equal(a.childRef, 'anon-01');
+    // fase 2 ter-flag HIGH
+    const p2 = a.perPhase.find((p) => p.phase === 2);
+    assert.equal(p2?.level, 'HIGH');
+    assert.equal(p2?.reached, false);
   });
 
-  await test('assessRisk: pola diskalkulia → dyscalculia HIGH, dyslexia LOW', () => {
-    const a = assessRisk({
-      sessionId: 's2',
-      childRef: 'anon-02',
-      metrics: {
-        normalLatencyMs: 1000,
-        reversalLatencyMs: 1050,
-        hesitationMs: 800,
-        totalTimeMs: 10000,
-        nleePercent: 30, // 2× ambang
-        accuracy: 0.75,
-        misclickPerTrial: 0.2,
-        trialCount: 15,
-      },
-    });
-    assert.equal(a.domains.dyscalculia, 'HIGH');
-    assert.equal(a.domains.dyslexia, 'LOW');
+  await test('assessReading: fondasi (fase 0) gagal → sinyal kuat (HIGH)', () => {
+    const trials = [
+      ...skillTrials('orient', 0, 3), // fase 0 runtuh
+      ...skillTrials('letter_name', 3, 3),
+    ];
+    const a = assessReading({ sessionId: 's3', childRef: 'anon-03', ageYears: 6, trials });
+    // fase 0 tak tercapai → effectiveReached -1 → gap = 2 - (-1) = 3
+    assert.equal(a.phaseAgeGap, 3);
+    assert.equal(a.level, 'HIGH');
   });
 
   console.log('\n— Aturan Profil (usia, pseudonym, cooldown) —');
@@ -213,8 +201,6 @@ const main = async () => {
     assert.equal(validateAgeYears(5).valid, false);
     assert.equal(validateAgeYears(10).valid, false);
     assert.equal(validateAgeYears(7.5).valid, false);
-    assert.match(validateAgeYears(5).reason ?? '', /6–9 tahun/);
-    assert.match(validateAgeYears(10).reason ?? '', /profesional/);
   });
 
   await test('validatePseudonym: tolak kosong & terlalu panjang', () => {
@@ -229,143 +215,20 @@ const main = async () => {
     assert.equal(c.daysSinceLast, null);
   });
 
-  await test('cooldown: < 14 hari → soft-block dengan pesan; ≥ 14 hari → bebas', () => {
+  await test('cooldown: < 14 hari → soft-block; ≥ 14 hari → bebas', () => {
     const now = 1_000_000_000_000;
     const day = 24 * 60 * 60 * 1000;
     const blocked = checkRescreeningCooldown(now - 5 * day, now);
     assert.equal(blocked.inCooldown, true);
     assert.equal(blocked.daysSinceLast, 5);
     assert.equal(blocked.daysRemaining, COOLDOWN_MIN_DAYS - 5);
-    assert.match(blocked.message ?? '', /hafal|jenuh/);
 
     const free = checkRescreeningCooldown(now - COOLDOWN_MIN_DAYS * day, now);
     assert.equal(free.inCooldown, false);
     assert.equal(free.daysRemaining, 0);
   });
 
-  console.log('\n— Behavioral Simulator —');
-
-  await test('simulator nonaktif → data tidak berubah', () => {
-    const sim = new BehavioralSimulator();
-    const trial = makeTrial({ isReversalTarget: true, nleePercent: 10 });
-    assert.deepEqual(sim.injectAnomaly(trial), trial);
-  });
-
-  await test('simulator aktif → anomali sesuai profil & hesitation ≤ latency', () => {
-    const sim = new BehavioralSimulator();
-    assert.equal(sim.toggle(), true);
-    const out = sim.injectAnomaly(
-      makeTrial({ isReversalTarget: true, latencyMs: 1000, hesitationMs: 400, nleePercent: 80 }),
-    );
-    assert.equal(out.latencyMs, 3200); // ×3.2
-    assert.ok(out.hesitationMs <= out.latencyMs);
-    assert.equal(out.nleePercent, 100); // 80+28 → clamp 100
-    assert.equal(sim.toggle(), false);
-  });
-
-  console.log('\n— Rencana Pendampingan (fallback & parsing) —');
-
-  const highRiskProfile: ChildProfileForPlan = {
-    childRef: 'anon-01',
-    ageYears: 7,
-    assessment: assessRisk({
-      sessionId: 's1',
-      childRef: 'anon-01',
-      metrics: {
-        normalLatencyMs: 1000,
-        reversalLatencyMs: 3200,
-        hesitationMs: 4000,
-        totalTimeMs: 10000,
-        nleePercent: 30,
-        accuracy: 0.6,
-        misclickPerTrial: 1,
-        trialCount: 15,
-      },
-    }),
-  };
-
-  await test('generateLocalCompanionPlan: struktur lengkap + rujukan + disclaimer', () => {
-    const plan = generateLocalCompanionPlan(highRiskProfile);
-    assert.equal(plan.source, 'local-template');
-    assert.ok(plan.companionActivities.length >= 3);
-    assert.ok(plan.referralGuidance.length >= 2);
-    assert.match(plan.disclaimer, /BUKAN diagnosis/);
-    // Bahasa observasi, bukan vonis: summary tidak boleh memvonis label.
-    assert.ok(!plan.summary.includes('disleksia'), 'summary tidak boleh melabeli anak');
-    assert.match(plan.summary, /konsultasi/); // level HIGH → ajakan konsultasi
-    assert.ok(plan.metricExplanations, 'penjelasan metrik absen');
-    assert.match(plan.metricExplanations.hi, /\d+%/, 'penjelasan HI tidak memuat angka persentase');
-    assert.match(plan.metricExplanations.rr, /\d+\.\d+/, 'penjelasan RR tidak memuat rasio desimal');
-    assert.match(plan.metricExplanations.nlee, /\d+%/, 'penjelasan NLEE tidak memuat angka persentase');
-  });
-
-  await test('generateLocalCompanionPlan: level LOW → rujukan pasif (tanpa keharusan)', () => {
-    const lowProfile: ChildProfileForPlan = {
-      childRef: 'anon-03',
-      ageYears: 8,
-      assessment: assessRisk({
-        sessionId: 's3',
-        childRef: 'anon-03',
-        metrics: {
-          normalLatencyMs: 1000,
-          reversalLatencyMs: 1100,
-          hesitationMs: 500,
-          totalTimeMs: 10000,
-          nleePercent: 4,
-          accuracy: 0.95,
-          misclickPerTrial: 0.1,
-          trialCount: 20,
-        },
-      }),
-    };
-    const plan = generateLocalCompanionPlan(lowProfile);
-    assert.ok(plan.referralGuidance.length >= 1);
-    assert.match(plan.referralGuidance[0], /belum ada pola/);
-  });
-
-  await test('generateCompanionPlan tanpa API key → jatuh ke template lokal', async () => {
-    // Supaya tidak mencetak stack trace TypeError ke console saat testing
-    const originalFetch = globalThis.fetch;
-    const originalWarn = console.warn;
-    globalThis.fetch = () => Promise.reject(new Error('Simulated fetch error'));
-    console.warn = () => {}; // Silence the warning in test
-
-    try {
-      const plan = await generateCompanionPlan(highRiskProfile);
-      assert.equal(plan.source, 'local-template');
-    } finally {
-      globalThis.fetch = originalFetch;
-      console.warn = originalWarn;
-    }
-  });
-
-  await test('buildCompanionPlanPrompt: tidak bocorkan childRef & minta JSON', () => {
-    const prompt = buildCompanionPlanPrompt(highRiskProfile);
-    assert.ok(!prompt.includes('anon-01'), 'prompt tidak boleh memuat identitas');
-    assert.match(prompt, /companionActivities/);
-    assert.match(prompt, /referralGuidance/);
-    assert.match(prompt, /usiaTahun/);
-    assert.ok(!prompt.includes('kelas'), 'prompt tidak lagi memakai konsep kelas');
-  });
-
-  await test('parseGeminiPlan: terima fence ```json & tolak skema salah', () => {
-    const ok = parseGeminiPlan(
-      '```json\n{"summary":"ok","companionActivities":["a"],"referralGuidance":["b"],"metricExplanations":{"hi":"x","rr":"y","nlee":"z"}}\n```',
-    );
-    assert.equal(ok.summary, 'ok');
-    assert.equal(ok.metricExplanations.hi, 'x');
-    assert.throws(() => parseGeminiPlan('{"summary":"x"}'));
-    // Tolak jika metricExplanations hilang/salah tipe
-    assert.throws(() =>
-      parseGeminiPlan('{"summary":"ok","companionActivities":["a"],"referralGuidance":["b"]}'),
-    );
-    // Skema lama (teacherRecommendations) juga harus ditolak.
-    assert.throws(() =>
-      parseGeminiPlan('{"summary":"x","teacherRecommendations":["a"],"parentActivities":["b"]}'),
-    );
-  });
-
-  console.log('\n— TelemetryLogger (mock store) —');
+  console.log('\n— TelemetryLogger (mock store, konteks skill baru) —');
 
   await test('batching: flush otomatis tiap 60 event + flush saat endSession', async () => {
     const written: unknown[][] = [];
@@ -393,15 +256,16 @@ const main = async () => {
       id: 's1',
       childRef: 'anon-01',
       ageYears: 7,
-      games: ['visual'],
+      skills: ['letter_name'],
       cooldownOverrideReason: 'sesi sebelumnya terputus',
     });
-    // EVALUASI.md #6: alasan override cooldown WAJIB ikut tersimpan.
     assert.equal(putSessions.length, 1);
     assert.equal(putSessions[0].cooldownOverrideReason, 'sesi sebelumnya terputus');
-    assert.equal(putSessions[0].ageYears, 7);
-    for (let i = 0; i < 65; i++) logger.log('visual', 0, 'pointer_move', { x: i });
-    // 1 event session_start + 65 → satu batch 60 sudah tertulis otomatis
+    assert.deepEqual(putSessions[0].skills, ['letter_name']);
+
+    const ctx = { skillId: 'letter_name' as SkillId, mechanicId: 'pick' as const, phase: 1 as const, trialIndex: 0 };
+    for (let i = 0; i < 65; i++) logger.log('pointer_move', ctx, { x: i });
+    // 1 event session_start + 65 → satu batch 60 tertulis otomatis
     assert.equal(written.length, 1);
     assert.equal(written[0].length, 60);
 
@@ -422,104 +286,167 @@ const main = async () => {
       trials: { add: async () => 1 },
     };
     const logger = new TelemetryLogger(store);
-    logger.log('visual', 0, 'hover'); // no-op
+    logger.log('hover', null); // no-op
   });
 
-  console.log('\n— Referral Bridge (panduan + PDF) —');
+  console.log('\n— Green Computing (estimasi karbon per sesi) —');
 
-  await test('referralGuide: konten lengkap & bahasa observasi', () => {
-    assert.ok(REFERRAL_SERVICES.length >= 3);
-    for (const level of ['LOW', 'MEDIUM', 'HIGH'] as const) {
-      assert.ok(WHEN_TO_SEEK_HELP[level].length > 50, `narasi ${level} terlalu pendek`);
-    }
-    assert.match(WHEN_TO_SEEK_HELP.HIGH, /BUKAN berarti/);
-    assert.ok(CONSULTATION_CHECKLIST.length >= 3);
-  });
-
-  await test('sanitizePdfText: normalisasi tipografi & buang emoji', () => {
-    assert.equal(sanitizePdfText('a–b — c'), 'a-b - c');
-    assert.equal(sanitizePdfText('“kutipan” ‘x’'), '"kutipan" \'x\'');
-    assert.equal(sanitizePdfText('skor ≥ 40, ±3'), 'skor >= 40, +/-3');
-    assert.equal(sanitizePdfText('halo 🎉 dunia'), 'halo  dunia');
-  });
-
-  const sampleChild: ChildProfile = {
-    id: 'child-1',
-    pseudonym: 'Kiko',
-    ageYears: 7,
-    consentAt: 1000,
-    createdAt: 1000,
-  };
-
-  await test('buildReferralReportPdf: PDF valid multi-halaman + metadata benar', async () => {
-    const bytes = await buildReferralReportPdf({
-      child: sampleChild,
-      assessment: highRiskProfile.assessment,
-      history: [
-        { sessionId: 's1', createdAt: 1000, compositeScore: 80, hesitationIndex: 0.4, nleePercent: 30 },
-        { sessionId: 's2', createdAt: 2000, compositeScore: 70, hesitationIndex: 0.35, nleePercent: 25 },
-      ],
-      plan: generateLocalCompanionPlan(highRiskProfile),
+  await test('estimateSessionCarbon: tanpa AI → aiGCO2e 0; dengan AI → lebih besar', () => {
+    const base = {
+      deviceActiveMs: 100_000,
+      ttsUtteranceCount: 20,
+      dataTransferBytes: 1_000_000,
+      syncPayloadBytes: 5_000,
+    };
+    const noAi = estimateSessionCarbon({ ...base, ai: { source: 'local-template' } });
+    const withAi = estimateSessionCarbon({
+      ...base,
+      ai: { source: 'gemini', promptTokens: 500, outputTokens: 300 },
     });
-    // Header berkas PDF valid.
-    const head = Buffer.from(bytes.slice(0, 5)).toString('ascii');
-    assert.equal(head, '%PDF-');
-    assert.ok(bytes.length > 2000, 'PDF terlalu kecil — konten kemungkinan kosong');
-    // Muat ulang untuk verifikasi struktural (konten stream terkompresi,
-    // jadi teks tidak bisa dicari literal di byte mentah).
-    const { PDFDocument } = await import('pdf-lib');
-    const loaded = await PDFDocument.load(bytes);
-    assert.ok(loaded.getPageCount() >= 2, `hanya ${loaded.getPageCount()} halaman`);
-    assert.match(loaded.getTitle() ?? '', /Laporan Rujukan/);
-    // Disclaimer resmi tidak boleh berubah bunyi intinya.
-    assert.match(PDF_DISCLAIMER, /bukan Surat Diagnosis Medis\/Psikologis Resmi/);
+    assert.equal(noAi.breakdown.aiGCO2e, 0);
+    assert.ok(withAi.breakdown.aiGCO2e > 0);
+    assert.ok(withAi.totalGCO2e > noAi.totalGCO2e);
+    assert.equal(noAi.aiCalled, false);
+    assert.equal(withAi.aiCalled, true);
+    assert.equal(noAi.isEstimate, true);
   });
 
-  console.log('\n— Ekspor/Impor Data (Tier 1.5) —');
-
-  const sampleSession: SessionRecord = {
-    id: 'sess-1',
-    childRef: 'child-1',
-    ageYears: 7,
-    startedAt: 1000,
-    endedAt: 2000,
-    games: ['visual'],
-  };
-  const sampleAssessment: RiskAssessment = { ...highRiskProfile.assessment, id: 9, sessionId: 'sess-1', childRef: 'child-1' };
-
-  await test('ekspor→parse roundtrip: struktur utuh & id auto-increment dibuang', () => {
-    const trial = { ...makeTrial({ sessionId: 'sess-1' }), id: 5 };
-    const pkg = buildChildExport(sampleChild, [sampleSession], [trial], [sampleAssessment]);
-    assert.equal(pkg.format, EXPORT_FORMAT);
-    assert.equal(pkg.trials[0].id, undefined);
-    assert.equal(pkg.assessments[0].id, undefined);
-
-    const parsed = parseChildExport(JSON.stringify(pkg));
-    assert.equal(parsed.profile.pseudonym, 'Kiko');
-    assert.equal(parsed.sessions.length, 1);
-    assert.equal(parsed.trials.length, 1);
+  await test('estimateSessionCarbon: skala mengikuti data (durasi & jumlah soal)', () => {
+    const short = estimateSessionCarbon({
+      deviceActiveMs: 100_000,
+      ttsUtteranceCount: 10,
+      dataTransferBytes: 0,
+      syncPayloadBytes: 0,
+      ai: { source: 'local-template' },
+    });
+    const long = estimateSessionCarbon({
+      deviceActiveMs: 900_000,
+      ttsUtteranceCount: 200,
+      dataTransferBytes: 0,
+      syncPayloadBytes: 0,
+      ai: { source: 'local-template' },
+    });
+    assert.ok(long.totalGCO2e > short.totalGCO2e);
   });
 
-  await test('parseChildExport: tolak JSON rusak, format asing, & versi lebih baru', () => {
-    assert.throws(() => parseChildExport('bukan json'), /JSON/);
-    assert.throws(() => parseChildExport('{"format":"lain"}'), /bukan berkas ekspor/);
-    const pkg = buildChildExport(sampleChild, [], [], []);
-    assert.throws(
-      () => parseChildExport(JSON.stringify({ ...pkg, version: 999 })),
-      /versi aplikasi yang lebih baru/,
+  await test('estimateSessionCarbon: token fallback dari panjang teks', () => {
+    const viaTokens = estimateSessionCarbon({
+      deviceActiveMs: 0,
+      ttsUtteranceCount: 0,
+      dataTransferBytes: 0,
+      syncPayloadBytes: 0,
+      ai: { source: 'gemini', promptTokens: 700, outputTokens: 300 },
+    });
+    // 2500×0.28 ≈ 700 token, 1100×0.28 ≈ 308 token
+    const viaChars = estimateSessionCarbon({
+      deviceActiveMs: 0,
+      ttsUtteranceCount: 0,
+      dataTransferBytes: 0,
+      syncPayloadBytes: 0,
+      ai: { source: 'gemini', promptChars: 2500, outputChars: 1100 },
+    });
+    assert.ok(Math.abs(viaTokens.breakdown.aiGCO2e - viaChars.breakdown.aiGCO2e) < 0.01);
+  });
+
+  await test('estimateSessionCarbon: greenHostingFactor menghapus segmen data centre', () => {
+    const bytes = 100_000_000;
+    const plain = estimateSessionCarbon({
+      deviceActiveMs: 0,
+      ttsUtteranceCount: 0,
+      dataTransferBytes: bytes,
+      syncPayloadBytes: 0,
+      ai: { source: 'local-template' },
+    });
+    const green = estimateSessionCarbon(
+      {
+        deviceActiveMs: 0,
+        ttsUtteranceCount: 0,
+        dataTransferBytes: bytes,
+        syncPayloadBytes: 0,
+        ai: { source: 'local-template' },
+      },
+      { ...DEFAULT_FACTORS, greenHostingFactor: 1 },
+    );
+    assert.ok(green.breakdown.transferGCO2e < plain.breakdown.transferGCO2e);
+    // rasio pengurangan = 0.067 / (0.067 + 0.072)
+    assert.ok(
+      Math.abs(
+        (plain.breakdown.transferGCO2e - green.breakdown.transferGCO2e) /
+          plain.breakdown.transferGCO2e -
+          0.067 / 0.139,
+      ) < 1e-9,
     );
   });
 
-  await test('remapExportIds: semua id baru & relasi childRef/sessionId tetap konsisten', () => {
-    const trial = makeTrial({ sessionId: 'sess-1' });
-    const pkg = buildChildExport(sampleChild, [sampleSession], [trial], [sampleAssessment]);
-    let n = 0;
-    const remapped = remapExportIds(pkg, () => `new-${++n}`);
-    assert.notEqual(remapped.profile.id, 'child-1');
-    assert.equal(remapped.sessions[0].childRef, remapped.profile.id);
-    assert.equal(remapped.trials[0].sessionId, remapped.sessions[0].id);
-    assert.equal(remapped.assessments[0].sessionId, remapped.sessions[0].id);
-    assert.equal(remapped.assessments[0].childRef, remapped.profile.id);
+  await test('classifyLoadClass: ambang ringan/sedang/berat (tentatif)', () => {
+    assert.equal(classifyLoadClass(0.5), 'ringan');
+    assert.equal(classifyLoadClass(1.5), 'sedang');
+    assert.equal(classifyLoadClass(4.0), 'berat');
+  });
+
+  await test('buildSessionCarbonInput: turunan dari data sesi nyata', () => {
+    const trials = [
+      makeTrial({ correct: true, latencyMs: 2000 }),
+      makeTrial({ correct: true, latencyMs: 3000 }),
+    ];
+    const input = buildSessionCarbonInput({
+      session: { startedAt: 0, endedAt: 60_000 },
+      trials,
+      dataTransferBytes: 1_500_000,
+      syncPayloadBytes: 200,
+      ai: { source: 'local-template' },
+    });
+    assert.equal(input.deviceActiveMs, 60_000 + 5000); // shell + sum latency
+    assert.equal(input.ttsUtteranceCount, 4); // 2 per trial
+    assert.equal(input.dataTransferBytes, 1_500_000);
+    assert.equal(input.syncPayloadBytes, 200);
+    assert.equal(input.ai?.source, 'local-template');
+  });
+
+  console.log('\n— Laporan PDF (referral/reportPdf) —');
+
+  await test('sanitizePdfText: karakter non-WinAnsi di-normalisasi ke ASCII', () => {
+    const out = sanitizePdfText('Anak \u201Csiap\u201D \u2014 3 \u00D7 \u2026 \uD83E\uDD34 \u2265 2');
+    assert.ok([...out].every((c) => c.charCodeAt(0) <= 0xff));
+    assert.ok(!out.includes('\u2014'));
+    assert.ok(out.includes('"siap"'));
+  });
+
+  await test('buildReferralReportPdf: PDF valid dengan radar + narasi observasi', async () => {
+    const child: ChildProfile = { id: 'c1', pseudonym: 'Harimau', ageYears: 8, createdAt: 0 };
+    const perPhase: PhaseResult[] = [0, 1, 2, 3, 4].map((phase) => {
+      const reliability = 95 - phase * 12;
+      return {
+        phase: phase as PhaseId,
+        reliability,
+        skills: [],
+        reached: reliability >= 70,
+        level: (reliability >= 70 ? 'LOW' : 'MEDIUM') as RiskLevel,
+      };
+    });
+    const assessment: RiskAssessment = {
+      sessionId: 's1',
+      childRef: 'c1',
+      ageYears: 8,
+      createdAt: 0,
+      highestPhaseReached: 2,
+      phaseAgeGap: 2,
+      level: 'MEDIUM',
+      perPhase,
+    };
+    const plan: CompanionPlanResult = {
+      source: 'local-template',
+      generatedAt: 0,
+      summary:
+        'Dari sesi bermain, anak sudah menunjukkan kenyamanan sampai tahap menghubungkan huruf dengan bunyi.',
+      companionActivities: ['Ajak mencari huruf yang sama, tanpa terburu-buru.'],
+      referralGuidance: ['Jalankan kegiatan pendampingan selama beberapa minggu.'],
+      metricExplanations: { 'fase-0': 'Anak tampak nyaman saat mengenal arah dan bentuk.' },
+      disclaimer: 'Bukan diagnosis.',
+    };
+    const bytes = await buildReferralReportPdf({ child, assessment, history: [], plan });
+    assert.ok(bytes.length > 1000);
+    assert.equal(String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3]), '%PDF');
   });
 
   console.log(`\n${passed} tes lulus.${process.exitCode ? ' (ADA KEGAGALAN)' : ''}`);

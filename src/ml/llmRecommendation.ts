@@ -2,79 +2,79 @@
  * ReadiKids AI — Generator Rencana Pendampingan adaptif (Layer 3).
  *
  * Alur graceful degradation:
- *   1. Ada API key + online  → panggil Gemini API, parse JSON terstruktur.
+ *   1. Ada API key + online  → panggil proxy AI, parse JSON terstruktur.
  *   2. Gagal apa pun sebabnya → generateLocalCompanionPlan() (template offline).
  *
- * PRIVASI: prompt HANYA berisi metrik agregat & level indikasi —
+ * PRIVASI: prompt HANYA berisi profil per-fase agregat & level indikasi —
  * tidak pernah mengirim pseudonym anak atau data mentah telemetri.
  *
- * v4.0: output untuk PENDAMPING GENERIK — saran aktivitas pendampingan
- * + panduan langkah rujukan (bukan lagi rekomendasi guru/IEP).
+ * Arsitektur v2 (membaca): input = profil 5 fase; output = rencana
+ * pendampingan berbahasa observasi yang HALUS (bukan diagnosis).
  */
-import {
-  generateLocalCompanionPlan,
-  SCREENING_DISCLAIMER,
-} from '../utils/fallbackTemplates';
-import type { ChildProfileForPlan, CompanionPlanResult } from '../types/telemetry';
+import { generateLocalCompanionPlan, SCREENING_DISCLAIMER } from '../utils/fallbackTemplates';
+import type {
+  ChildProfileForPlan,
+  CompanionPlanResult,
+  MetricExplanations,
+} from '../types/telemetry';
 
-/**
- * URL proxy AI serverless (menyembunyikan API key di server).
- * Default same-origin '/api/companion-plan'; bisa dioverride via
- * VITE_AI_PROXY_URL bila perlu (mis. saat dev pakai origin lain).
- */
 function proxyUrl(): string {
   const env = (import.meta as unknown as { env?: Record<string, string> }).env ?? {};
   return env.VITE_AI_PROXY_URL || '/api/companion-plan';
 }
 
+/** Label ramah tiap fase untuk konteks prompt. */
+const PHASE_LABEL: Record<number, string> = {
+  0: 'fondasi arah & bentuk',
+  1: 'mengenal huruf',
+  2: 'huruf ke bunyi',
+  3: 'kesadaran bunyi kata',
+  4: 'merangkai suku kata',
+};
+
+/** Ringkasan agregat non-identitas untuk dikirim ke proxy / prompt. */
+function assessmentDigest(profile: ChildProfileForPlan) {
+  const a = profile.assessment;
+  return {
+    usiaTahun: profile.ageYears,
+    faseTertinggiTercapai: a.highestPhaseReached,
+    selisihFaseDenganUsia: a.phaseAgeGap,
+    levelKeseluruhan: a.level,
+    profilFase: [...a.perPhase]
+      .sort((x, y) => x.phase - y.phase)
+      .map((p) => ({
+        fase: p.phase,
+        area: PHASE_LABEL[p.phase],
+        keandalan_0_100: p.reliability,
+        tercapai: p.reached,
+      })),
+    catatanPendamping: profile.companionNotes ?? null,
+  };
+}
+
 /** Prompt terstruktur — meminta output JSON agar mudah diparse. */
 export function buildCompanionPlanPrompt(profile: ChildProfileForPlan): string {
-  const { assessment, ageYears, companionNotes } = profile;
   return [
-    'Kamu adalah asisten pendampingan belajar anak untuk keluarga di Indonesia.',
-    'Pembacamu adalah pendamping anak — bisa orang tua, wali, guru, atau tutor;',
+    'Kamu adalah asisten pendampingan membaca anak untuk keluarga di Indonesia.',
+    'Pembacamu adalah pendamping anak — orang tua, wali, guru, atau tutor;',
     'JANGAN berasumsi mereka punya latar belakang pendidikan formal.',
-    'Berikut hasil SKRINING AWAL (bukan diagnosis) seorang anak:',
-    JSON.stringify(
-      {
-        usiaTahun: ageYears,
-        skorKompositIndikasi_0_100: assessment.compositeScore,
-        levelKeseluruhan: assessment.level,
-        indikasiDisleksia: assessment.domains.dyslexia,
-        indikasiDiskalkulia: assessment.domains.dyscalculia,
-        rincianSkor: assessment.breakdown,
-        metrikAgregat: {
-          hesitationIndex:
-            assessment.metrics.totalTimeMs > 0
-              ? +(assessment.metrics.hesitationMs / assessment.metrics.totalTimeMs).toFixed(3)
-              : 0,
-          reversalRatio:
-            assessment.metrics.normalLatencyMs > 0
-              ? +(
-                  assessment.metrics.reversalLatencyMs / assessment.metrics.normalLatencyMs
-                ).toFixed(2)
-              : null,
-          nleePercent: assessment.metrics.nleePercent,
-          akurasi: +assessment.metrics.accuracy.toFixed(2),
-        },
-        catatanPendamping: companionNotes ?? null,
-      },
-      null,
-      2,
-    ),
+    'Berikut hasil SKRINING AWAL (bukan diagnosis) perkembangan membaca seorang anak,',
+    'dinyatakan sebagai profil 5 tahap (fase 0 fondasi → fase 4 merangkai kata):',
+    JSON.stringify(assessmentDigest(profile), null, 2),
     '',
-    'Buat Rencana Pendampingan ringkas dalam Bahasa Indonesia sederhana.',
+    'Buat Rencana Pendampingan ringkas dalam Bahasa Indonesia sederhana dan HANGAT.',
     'Jawab HANYA dengan JSON valid berformat persis:',
-    '{"summary": string, "companionActivities": string[], "referralGuidance": string[], "metricExplanations": {"hi": string, "rr": string, "nlee": string}}',
+    '{"summary": string, "companionActivities": string[], "referralGuidance": string[], "metricExplanations": {"fase-0": string, ...}}',
     'Ketentuan: summary maksimal 3 kalimat, bahasa observasi yang suportif',
-    '(contoh: "ditemukan pola yang sebaiknya diamati" — BUKAN vonis seperti "anak Anda disleksia");',
-    'companionActivities 3-5 aktivitas pendampingan sederhana yang bisa dilakukan',
-    'di rumah tanpa alat mahal dan tanpa keahlian khusus;',
-    'referralGuidance 2-3 langkah konkret kapan & ke mana mencari bantuan profesional',
-    '(psikolog anak, puskesmas, klinik tumbuh kembang) sesuai level indikasi;',
-    'jangan menyebut diagnosis medis, jangan menjanjikan hasil, gunakan istilah "indikasi".',
-    'Untuk metricExplanations, berikan SATU kalimat analisis singkat per metrik (hi=Jeda ragu, rr=Huruf cermin, nlee=Estimasi angka) ',
-    'yang menjelaskan mengapa metrik tersebut rendah/sedang/tinggi, WAJIB menyertakan angka aktual dari metrikAgregat dalam kalimat tersebut.'
+    '(contoh: "anak tampak paling terbantu bila didampingi saat menghubungkan huruf dengan bunyi"',
+    '— DILARANG memvonis seperti "anak Anda disleksia" atau menampilkan kategori rendah/sedang/tinggi);',
+    'companionActivities 3-5 kegiatan rumah sederhana tanpa alat mahal & tanpa keahlian khusus,',
+    'diutamakan untuk tahap yang paling perlu dukungan;',
+    'referralGuidance 2-3 langkah tindak lanjut yang lembut & mudah diterima wali',
+    '(mengobrol dengan guru, psikolog anak, atau layanan tumbuh kembang) sesuai level;',
+    'jangan menyebut diagnosis, jangan menjanjikan hasil, hindari kata menakutkan.',
+    'metricExplanations: objek berisi SATU kalimat observasi lembut per tahap yang dimainkan,',
+    'kunci "fase-0" sampai "fase-4" (hanya fase yang ada di profil).',
   ].join('\n');
 }
 
@@ -82,40 +82,43 @@ interface GeminiPlanPayload {
   summary: string;
   companionActivities: string[];
   referralGuidance: string[];
-  metricExplanations: {
-    hi: string;
-    rr: string;
-    nlee: string;
-  };
+  metricExplanations: MetricExplanations;
+  /** Opsional — token Gemini terpakai (diteruskan proxy untuk estimasi karbon). */
+  aiUsage?: { promptTokens?: number; outputTokens?: number };
 }
 
-/** Parse respons Gemini yang kadang terbungkus ```json ... ```. */
+function isStringRecord(v: unknown): v is MetricExplanations {
+  return (
+    typeof v === 'object' &&
+    v !== null &&
+    !Array.isArray(v) &&
+    Object.values(v as Record<string, unknown>).every((x) => typeof x === 'string')
+  );
+}
+
+function isValidPlan(p: Partial<GeminiPlanPayload>): p is GeminiPlanPayload {
+  return (
+    typeof p.summary === 'string' &&
+    Array.isArray(p.companionActivities) &&
+    Array.isArray(p.referralGuidance) &&
+    isStringRecord(p.metricExplanations)
+  );
+}
+
+/** Parse respons LLM yang kadang terbungkus ```json ... ```. */
 export function parseGeminiPlan(text: string): GeminiPlanPayload {
   const cleaned = text.replace(/```json|```/g, '').trim();
   const parsed = JSON.parse(cleaned) as Partial<GeminiPlanPayload>;
-  if (
-    typeof parsed.summary !== 'string' ||
-    !Array.isArray(parsed.companionActivities) ||
-    !Array.isArray(parsed.referralGuidance) ||
-    typeof parsed.metricExplanations !== 'object' ||
-    parsed.metricExplanations === null ||
-    typeof (parsed.metricExplanations as any).hi !== 'string' ||
-    typeof (parsed.metricExplanations as any).rr !== 'string' ||
-    typeof (parsed.metricExplanations as any).nlee !== 'string'
-  ) {
+  if (!isValidPlan(parsed)) {
     throw new Error('Struktur JSON Rencana Pendampingan dari LLM tidak sesuai skema');
   }
-  return parsed as GeminiPlanPayload;
+  return parsed;
 }
 
 /**
- * Titik masuk utama pembuatan Rencana Pendampingan.
- * Selalu berhasil mengembalikan CompanionPlanResult — tidak pernah
- * melempar error ke UI (demo-safe): kegagalan apa pun jatuh ke template lokal.
- *
- * Alur: kirim METRIK AGREGAT ke serverless proxy (key AI aman di server) ->
- * proxy memanggil LLM -> balas JSON rencana. Offline / proxy tak tersedia /
- * error apa pun -> template lokal.
+ * Titik masuk utama pembuatan Rencana Pendampingan. Selalu berhasil
+ * mengembalikan CompanionPlanResult (demo-safe): kegagalan apa pun jatuh ke
+ * template lokal. PRIVASI: hanya profil fase agregat yang dikirim ke proxy.
  */
 export async function generateCompanionPlan(
   profile: ChildProfileForPlan,
@@ -127,43 +130,27 @@ export async function generateCompanionPlan(
     const res = await fetch(proxyUrl(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      // PRIVASI: hanya metrik agregat + level; tanpa pseudonym / childRef / data mentah.
-      body: JSON.stringify({
-        ageYears: profile.ageYears,
-        assessment: {
-          compositeScore: profile.assessment.compositeScore,
-          level: profile.assessment.level,
-          domains: profile.assessment.domains,
-          breakdown: profile.assessment.breakdown,
-          metrics: profile.assessment.metrics,
-        },
-        companionNotes: profile.companionNotes ?? null,
-      }),
+      body: JSON.stringify(assessmentDigest(profile)),
     });
     if (!res.ok) throw new Error(`Proxy AI error: ${res.status}`);
 
     const payload = (await res.json()) as Partial<GeminiPlanPayload>;
-    if (
-      typeof payload.summary !== 'string' ||
-      !Array.isArray(payload.companionActivities) ||
-      !Array.isArray(payload.referralGuidance) ||
-      typeof payload.metricExplanations !== 'object' ||
-      payload.metricExplanations === null ||
-      typeof (payload.metricExplanations as any).hi !== 'string' ||
-      typeof (payload.metricExplanations as any).rr !== 'string' ||
-      typeof (payload.metricExplanations as any).nlee !== 'string'
-    ) {
+    if (!isValidPlan(payload)) {
       throw new Error('Struktur JSON rencana dari proxy tidak sesuai skema');
     }
 
+    const usage = payload.aiUsage;
     return {
       source: 'gemini',
       generatedAt: Date.now(),
       summary: payload.summary,
       companionActivities: payload.companionActivities,
       referralGuidance: payload.referralGuidance,
-      metricExplanations: payload.metricExplanations as { hi: string; rr: string; nlee: string },
+      metricExplanations: payload.metricExplanations,
       disclaimer: SCREENING_DISCLAIMER,
+      ...(usage && usage.promptTokens != null
+        ? { aiUsage: { promptTokens: usage.promptTokens, outputTokens: usage.outputTokens ?? 0 } }
+        : {}),
     };
   } catch (err) {
     console.warn('[CompanionPlan] proxy AI gagal, fallback template lokal:', err);

@@ -71,10 +71,10 @@ export const TentangPrivasi = ({ onBack }: TentangPrivasiProps): JSX.Element => 
           <section className="bg-white rounded-3xl shadow-[0px_8px_24px_rgba(74,55,40,0.08)] p-6 sm:p-7">
             <h2 className="font-black text-[#4a3728] text-lg sm:text-xl mb-2">Apa itu ReadiKids</h2>
             <p className="font-bold text-[#6b5a48] text-sm sm:text-[15px] leading-relaxed">
-              ReadiKids adalah alat <strong className="text-[#4a3728]">skrining awal</strong> indikasi
-              kesulitan belajar (disleksia &amp; diskalkulia) untuk anak usia 6–9 tahun.{" "}
+              ReadiKids adalah alat <strong className="text-[#4a3728]">skrining awal</strong> perkembangan
+              membaca untuk anak usia 6–9 tahun.{" "}
               <strong className="text-[#4a3728]">Bukan alat diagnosis medis dan bukan aplikasi edukasi.</strong>{" "}
-              Hasilnya berupa observasi pola belajar untuk membantu pendamping menentukan langkah —
+              Hasilnya berupa pengamatan pola membaca untuk membantu pendamping menentukan langkah —
               kepastian hanya bisa diberikan oleh profesional.
             </p>
           </section>

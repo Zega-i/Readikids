@@ -74,7 +74,7 @@ export const PuncakBintang = ({ onOpenStory }: PuncakBintangProps): JSX.Element 
             Petualangan selesai! ⭐
           </h1>
           <p className="font-bold text-[#d4c2f0] text-sm sm:text-base lg:text-lg">
-            Sudah menjelajah 4 dunia bersama Cilo.
+            Sudah menjelajah 5 dunia bersama Cilo.
           </p>
         </div>
 

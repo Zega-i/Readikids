@@ -38,81 +38,64 @@ function geminiUrl(model: string): string {
   return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 }
 
-interface Assessment {
-  compositeScore: number;
-  level: 'LOW' | 'MEDIUM' | 'HIGH';
-  domains: { dyslexia: string; dyscalculia: string };
-  breakdown: { reversalScore: number; hesitationScore: number; nleeScore: number };
-  metrics: {
-    normalLatencyMs: number;
-    reversalLatencyMs: number;
-    hesitationMs: number;
-    totalTimeMs: number;
-    nleePercent: number | null;
-    accuracy: number;
-  };
+// Arsitektur v2 (membaca): body = profil per-fase agregat (tanpa identitas).
+// Cocok dengan assessmentDigest() di src/ml/llmRecommendation.ts.
+interface PhaseProfile {
+  fase: number;
+  area: string;
+  keandalan_0_100: number;
+  tercapai: boolean;
 }
 
 interface PlanRequestBody {
-  ageYears: number;
-  assessment: Assessment;
-  companionNotes?: string | null;
+  usiaTahun: number;
+  faseTertinggiTercapai: number;
+  selisihFaseDenganUsia: number;
+  levelKeseluruhan: 'LOW' | 'MEDIUM' | 'HIGH';
+  profilFase: PhaseProfile[];
+  catatanPendamping?: string | null;
 }
 
 /** Bangun prompt terstruktur (Bahasa Indonesia, bahasa observasi, output JSON). */
 function buildPrompt(body: PlanRequestBody): string {
-  const { assessment: a, ageYears, companionNotes } = body;
-  const hesitationIndex =
-    a.metrics.totalTimeMs > 0 ? +(a.metrics.hesitationMs / a.metrics.totalTimeMs).toFixed(3) : 0;
-  const reversalRatio =
-    a.metrics.normalLatencyMs > 0
-      ? +(a.metrics.reversalLatencyMs / a.metrics.normalLatencyMs).toFixed(2)
-      : null;
-
   return [
-    'Kamu adalah asisten pendampingan belajar anak untuk keluarga di Indonesia.',
+    'Kamu adalah asisten pendampingan membaca anak untuk keluarga di Indonesia.',
     'Pembacamu adalah pendamping anak (orang tua, wali, guru, atau tutor);',
     'JANGAN berasumsi mereka punya latar belakang pendidikan formal.',
-    'Berikut hasil SKRINING AWAL (bukan diagnosis) seorang anak:',
-    JSON.stringify(
-      {
-        usiaTahun: ageYears,
-        skorKompositIndikasi_0_100: a.compositeScore,
-        levelKeseluruhan: a.level,
-        indikasiDisleksia: a.domains.dyslexia,
-        indikasiDiskalkulia: a.domains.dyscalculia,
-        rincianSkor: a.breakdown,
-        metrikAgregat: {
-          hesitationIndex,
-          reversalRatio,
-          nleePercent: a.metrics.nleePercent,
-          akurasi: +a.metrics.accuracy.toFixed(2),
-        },
-        catatanPendamping: companionNotes ?? null,
-      },
-      null,
-      2,
-    ),
+    'Berikut hasil SKRINING AWAL (bukan diagnosis) perkembangan membaca seorang anak,',
+    'dinyatakan sebagai profil 5 tahap (fase 0 fondasi -> fase 4 merangkai kata):',
+    JSON.stringify(body, null, 2),
     '',
-    'Buat Rencana Pendampingan ringkas dalam Bahasa Indonesia sederhana.',
+    'Buat Rencana Pendampingan ringkas dalam Bahasa Indonesia sederhana dan HANGAT.',
     'Jawab HANYA dengan JSON valid berformat persis:',
-    '{"summary": string, "companionActivities": string[], "referralGuidance": string[], "metricExplanations": {"hi": string, "rr": string, "nlee": string}}',
+    '{"summary": string, "companionActivities": string[], "referralGuidance": string[], "metricExplanations": {"fase-0": string, ...}}',
     'Ketentuan: summary maksimal 3 kalimat, bahasa observasi yang suportif',
-    '(contoh: "ditemukan pola yang sebaiknya diamati" — BUKAN vonis seperti "anak Anda disleksia");',
-    'companionActivities 3-5 aktivitas pendampingan sederhana tanpa alat mahal;',
-    'referralGuidance 2-3 langkah konkret kapan & ke mana mencari bantuan profesional',
-    'sesuai level indikasi; gunakan istilah "indikasi", jangan menyebut diagnosis medis,',
-    'jangan menjanjikan hasil.',
-    'Untuk metricExplanations, berikan SATU kalimat analisis singkat per metrik (hi=Jeda ragu, rr=Huruf cermin, nlee=Estimasi angka) ',
-    'yang menjelaskan mengapa metrik tersebut rendah/sedang/tinggi, WAJIB menyertakan angka aktual dari metrikAgregat dalam kalimat tersebut.'
+    '(contoh: "anak tampak paling terbantu bila didampingi saat menghubungkan huruf dengan bunyi"',
+    '- DILARANG memvonis seperti "anak Anda disleksia" atau menampilkan kategori rendah/sedang/tinggi);',
+    'companionActivities 3-5 kegiatan rumah sederhana tanpa alat mahal & tanpa keahlian khusus,',
+    'diutamakan untuk tahap yang paling perlu dukungan;',
+    'referralGuidance 2-3 langkah tindak lanjut yang lembut & mudah diterima wali',
+    '(mengobrol dengan guru, psikolog anak, atau layanan tumbuh kembang) sesuai level;',
+    'jangan menyebut diagnosis, jangan menjanjikan hasil, hindari kata menakutkan dan angka mentah.',
+    'metricExplanations: objek berisi SATU kalimat observasi lembut per tahap yang dimainkan,',
+    'kunci "fase-0" sampai "fase-4" (hanya fase yang ada di profilFase).',
   ].join('\n');
+}
+
+function isStringRecord(v: unknown): v is Record<string, string> {
+  return (
+    typeof v === 'object' &&
+    v !== null &&
+    !Array.isArray(v) &&
+    Object.values(v as Record<string, unknown>).every((x) => typeof x === 'string')
+  );
 }
 
 function isValidPlan(p: unknown): p is {
   summary: string;
   companionActivities: string[];
   referralGuidance: string[];
-  metricExplanations: { hi: string; rr: string; nlee: string };
+  metricExplanations: Record<string, string>;
 } {
   const x = p as Record<string, unknown>;
   return (
@@ -120,11 +103,7 @@ function isValidPlan(p: unknown): p is {
     typeof x.summary === 'string' &&
     Array.isArray(x.companionActivities) &&
     Array.isArray(x.referralGuidance) &&
-    typeof x.metricExplanations === 'object' &&
-    x.metricExplanations !== null &&
-    typeof (x.metricExplanations as any).hi === 'string' &&
-    typeof (x.metricExplanations as any).rr === 'string' &&
-    typeof (x.metricExplanations as any).nlee === 'string'
+    isStringRecord(x.metricExplanations)
   );
 }
 
@@ -151,8 +130,8 @@ export default async function handler(req: VercelReq, res: VercelRes): Promise<v
 
   try {
     const body = req.body as PlanRequestBody;
-    if (!body?.assessment || typeof body.ageYears !== 'number') {
-      res.status(400).json({ error: 'Body tidak valid: butuh ageYears & assessment.' });
+    if (!Array.isArray(body?.profilFase) || typeof body.usiaTahun !== 'number') {
+      res.status(400).json({ error: 'Body tidak valid: butuh usiaTahun & profilFase.' });
       return;
     }
 
@@ -180,6 +159,11 @@ export default async function handler(req: VercelReq, res: VercelRes): Promise<v
 
     const data = (await upstream.json()) as {
       candidates?: { content?: { parts?: { text?: string }[] } }[];
+      usageMetadata?: {
+        promptTokenCount?: number;
+        candidatesTokenCount?: number;
+        totalTokenCount?: number;
+      };
     };
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) {
@@ -194,11 +178,17 @@ export default async function handler(req: VercelReq, res: VercelRes): Promise<v
       return;
     }
 
+    // Teruskan pemakaian token nyata (usageMetadata Gemini) ke frontend —
+    // dipakai untuk estimasi jejak karbon sesi (data nyata, bukan tebakan).
+    const um = data.usageMetadata;
     res.status(200).json({
       summary: parsed.summary,
       companionActivities: parsed.companionActivities,
       referralGuidance: parsed.referralGuidance,
       metricExplanations: parsed.metricExplanations,
+      ...(um?.promptTokenCount != null
+        ? { aiUsage: { promptTokens: um.promptTokenCount, outputTokens: um.candidatesTokenCount ?? 0 } }
+        : {}),
     });
   } catch (err) {
     res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
