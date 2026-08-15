@@ -102,7 +102,11 @@ export default function BuildGame({ skillId, accent = "#e0993a", onComplete, onB
     setLocked(true);
     const total = Math.round(performance.now() - startRef.current);
     const hesitationMs = Math.max(0, total - PER_SLOT_BASELINE_MS * order.length);
-    const correct = finalPlaced.length === order.length && finalPlaced.every((v, i) => v === order[i]);
+    const correct =
+      finalPlaced.length === order.length &&
+      (item.anyOrder
+        ? finalPlaced.every((v) => order.includes(v))
+        : finalPlaced.every((v, i) => v === order[i]));
     let errorType: TrialRecord["errorType"] = null;
     if (!correct) {
       const sameSet = [...finalPlaced].sort().join() === [...order].sort().join();

@@ -25,8 +25,6 @@ function shortDate(ms: number): string {
   return `${d.getDate()} ${BULAN[d.getMonth()].slice(0, 3)}`;
 }
 
-type Risk = "LOW" | "MEDIUM" | "HIGH";
-
 // Nama ramah tiap tahap membaca (0-4).
 const PHASE_NAME: Record<number, string> = {
   0: "Mengenal arah & bentuk",
@@ -36,12 +34,8 @@ const PHASE_NAME: Record<number, string> = {
   4: "Merangkai kata",
 };
 
-// Chip status ringkas per sesi (HP).
-const CHIP: Record<Risk, { text: string; icon: string; color: string; bg: string }> = {
-  LOW:    { text: "TIPIKAL",    icon: "✓", color: "#2f5b23", bg: "#eaf7e0" },
-  MEDIUM: { text: "DIAMATI",    icon: "⏳", color: "#9a6b00", bg: "#fff3d6" },
-  HIGH:   { text: "KONSULTASI", icon: "🩺", color: "#1f6b6b", bg: "#dff2f2" },
-};
+// Chip posisi perkembangan membaca — framing observasi, BUKAN indikator risiko.
+const POSITION_STYLE = { background: "#eaf7e0", color: "#2f5b23" };
 
 export default function RiwayatLaporan({ activeProfile, onBack, onOpenResult }: RiwayatLaporanProps) {
   const [results, setResults] = useState<ScreeningResult[]>([]);
@@ -125,7 +119,6 @@ export default function RiwayatLaporan({ activeProfile, onBack, onOpenResult }: 
             <div className="flex flex-col gap-3 mt-4">
               {results.map((res, i) => {
                 const num = total - i;
-                const chip = CHIP[res.assessment.level];
                 const isNewest = i === 0;
                 return (
                   <button
@@ -139,8 +132,8 @@ export default function RiwayatLaporan({ activeProfile, onBack, onOpenResult }: 
                       <div className="flex items-center justify-between gap-2">
                         <p className="font-black text-[#4a3728] text-base">#{num} · {shortDate(res.endedAt)}</p>
                         <span className="shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-black"
-                          style={{ background: chip.bg, color: chip.color }}>
-                          {chip.icon} {chip.text}
+                          style={POSITION_STYLE}>
+                          🗺️ Sampai tahap {PHASE_NAME[res.assessment.highestPhaseReached]}
                         </span>
                       </div>
                       <p className="font-bold text-[#8a7a66] text-xs leading-snug mt-1 line-clamp-2">
@@ -154,7 +147,7 @@ export default function RiwayatLaporan({ activeProfile, onBack, onOpenResult }: 
 
             {/* Catatan tren */}
             <p className="text-center font-bold text-[#8a7a66] text-xs leading-relaxed mt-6 px-2">
-              pola menetap di 2–3 petualangan? saatnya konsultasi — buka hasil untuk unduh Laporan PDF 📄
+              pola yang menetap bisa jadi bahan pengamatan — buka hasil untuk melihat detail & unduh Laporan PDF 📄
             </p>
           </>
         )}

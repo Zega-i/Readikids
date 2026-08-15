@@ -11,7 +11,9 @@ import type { PhaseId } from "../types/telemetry";
 
 // Dunia dibuka BERURUTAN: hanya bisa masuk dunia berikutnya setelah dunia
 // sebelumnya diselesaikan. World pertama (fase 0) selalu terbuka.
-const UNLOCK_ALL = false;
+// CATATAN TEMPORER (uji coba): diset true agar SEMUA dunia terbuka tanpa
+// menyelesaikan dunia sebelumnya. Kembalikan ke false setelah selesai review.
+const UNLOCK_ALL = true;
 
 interface Pos { x: number; y: number; }
 interface Node { phase: PhaseId; name: string; emoji: string; accent: string; subtext: string; web: Pos; hp: Pos; }

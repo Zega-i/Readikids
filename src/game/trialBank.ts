@@ -28,6 +28,10 @@ export interface Choice {
   image?: string;
   /** Teks yang diucapkan TTS saat ubin relevan (mis. bunyi huruf). */
   audio?: string;
+  /** Tampilkan gambar dicerminkan horizontal (scaleX -1) — untuk diskriminasi cermin. */
+  flip?: boolean;
+  /** Rotasi gambar (derajat, kelipatan 90) — untuk distraktor rotasi. */
+  rotate?: number;
 }
 
 /** Satu soal generik untuk mekanik pilihan/urutan. */
@@ -51,6 +55,8 @@ export interface Item {
    * mengacak posisi jawaban agar anak tidak bisa menebak "selalu paling kiri".
    */
   noShuffle?: boolean;
+  /** Urutan ubin tidak dinilai (kata ulang/mirip): cukup semua ubin benar terpakai. */
+  anyOrder?: boolean;
   /** Peta id pilihan salah -> jenis error (untuk klasifikasi telemetri). */
   errorTags?: Record<string, string>;
 }
@@ -160,18 +166,18 @@ const BANKS: SkillBank[] = [
     emoji: '🧭',
     intro: 'Pilih gambar yang menghadap ke arah yang sama.',
     demo: [
-      choiceItem('orient-d1', 'Mana yang sama dengan contoh?', [c('a', '🦌'), c('b', '🦌')], 'a', { stimulusText: '🦌' }),
-      choiceItem('orient-d2', 'Mana yang menghadap sama?', [c('a', '➡️'), c('b', '⬅️')], 'a', { stimulusText: '➡️', errorTags: { b: 'mirror' } }),
+      choiceItem('orient-d1', 'Mana yang sama dengan contoh?', [c('a', undefined, { image: '🦌' }), c('b', undefined, { image: '🦌', flip: true })], 'a', { stimulusText: '🦌', errorTags: { b: 'mirror' } }),
+      choiceItem('orient-d2', 'Mana yang menghadap sama?', [c('a', undefined, { image: '➡️' }), c('b', undefined, { image: '⬅️' })], 'a', { stimulusText: '➡️', errorTags: { b: 'mirror' } }),
     ],
     items: [
-      choiceItem('orient-1', 'Mana panah yang menghadap sama?', [c('a', '➡️'), c('b', '⬅️'), c('c', '⬆️')], 'a', { stimulusText: '➡️', errorTags: { b: 'mirror', c: 'rotation' } }),
-      choiceItem('orient-2', 'Mana yang menghadap sama?', [c('a', '🐟'), c('b', '🐟')], 'b', { stimulusText: '🐟', errorTags: { a: 'mirror' } }),
-      choiceItem('orient-3', 'Pilih yang arahnya sama.', [c('a', '👉'), c('b', '👈'), c('c', '👇')], 'a', { stimulusText: '👉', errorTags: { b: 'mirror', c: 'rotation' } }),
-      choiceItem('orient-4', 'Mana yang tidak terbalik?', [c('a', '🌙'), c('b', '🌙')], 'a', { stimulusText: '🌙', errorTags: { b: 'rotation' } }),
-      choiceItem('orient-5', 'Mana yang menghadap sama?', [c('a', '🚗'), c('b', '🚗'), c('c', '🚗')], 'c', { stimulusText: '🚗', errorTags: { a: 'mirror', b: 'rotation' } }),
-      choiceItem('orient-6', 'Pilih arah yang sama.', [c('a', '↗️'), c('b', '↘️'), c('c', '↖️')], 'a', { stimulusText: '↗️', errorTags: { b: 'mirror', c: 'rotation' } }),
-      choiceItem('orient-7', 'Pilih yang menghadap sama.', [c('a', '👈'), c('b', '👉'), c('c', '👆')], 'a', { stimulusText: '👈', errorTags: { b: 'mirror', c: 'rotation' } }),
-      choiceItem('orient-8', 'Mana yang tidak terbalik?', [c('a', '🚀'), c('b', '🚀')], 'a', { stimulusText: '🚀', errorTags: { b: 'rotation' } }),
+      choiceItem('orient-1', 'Mana panah yang menghadap sama?', [c('a', undefined, { image: '➡️' }), c('b', undefined, { image: '⬅️' }), c('c', undefined, { image: '⬆️' })], 'a', { stimulusText: '➡️', errorTags: { b: 'mirror', c: 'rotation' } }),
+      choiceItem('orient-2', 'Mana yang menghadap sama?', [c('a', undefined, { image: '🐟', flip: true }), c('b', undefined, { image: '🐟' })], 'b', { stimulusText: '🐟', errorTags: { a: 'mirror' } }),
+      choiceItem('orient-3', 'Pilih yang arahnya sama.', [c('a', undefined, { image: '👉' }), c('b', undefined, { image: '👈' }), c('c', undefined, { image: '👇' })], 'a', { stimulusText: '👉', errorTags: { b: 'mirror', c: 'rotation' } }),
+      choiceItem('orient-4', 'Mana yang tidak terbalik?', [c('a', undefined, { image: '🌙' }), c('b', undefined, { image: '🌙', rotate: 180 })], 'a', { stimulusText: '🌙', errorTags: { b: 'rotation' } }),
+      choiceItem('orient-5', 'Mana yang menghadap sama?', [c('a', undefined, { image: '🚗', flip: true }), c('b', undefined, { image: '🚗', rotate: 180 }), c('c', undefined, { image: '🚗' })], 'c', { stimulusText: '🚗', errorTags: { a: 'mirror', b: 'rotation' } }),
+      choiceItem('orient-6', 'Pilih arah yang sama.', [c('a', undefined, { image: '↗️' }), c('b', undefined, { image: '↘️' }), c('c', undefined, { image: '↖️' })], 'a', { stimulusText: '↗️', errorTags: { b: 'mirror', c: 'rotation' } }),
+      choiceItem('orient-7', 'Pilih yang menghadap sama.', [c('a', undefined, { image: '👈' }), c('b', undefined, { image: '👉' }), c('c', undefined, { image: '👆' })], 'a', { stimulusText: '👈', errorTags: { b: 'mirror', c: 'rotation' } }),
+      choiceItem('orient-8', 'Mana yang tidak terbalik?', [c('a', undefined, { image: '🚀' }), c('b', undefined, { image: '🚀', rotate: 180 })], 'a', { stimulusText: '🚀', errorTags: { b: 'rotation' } }),
     ],
   },
   {
@@ -594,10 +600,10 @@ const BANKS: SkillBank[] = [
       { id: 'mo-2', prompt: 'Susun "makan" + "an".', stimulusAudio: ['makan', 'an'], choices: [c('makan', 'makan'), c('an', 'an')], correctOrder: ['makan', 'an'] },
       { id: 'mo-3', prompt: 'Susun "ber" + "main".', stimulusAudio: ['ber', 'main'], choices: [c('ber', 'ber'), c('main', 'main')], correctOrder: ['ber', 'main'] },
       { id: 'mo-4', prompt: 'Susun "me" + "nulis".', stimulusAudio: ['me', 'nulis'], choices: [c('me', 'me'), c('nulis', 'nulis')], correctOrder: ['me', 'nulis'] },
-      { id: 'mo-5', prompt: 'Susun "kupu" + "kupu" (kata ulang).', stimulusAudio: ['kupu', 'kupu'], choices: [c('kupu1', 'kupu'), c('kupu2', 'kupu')], correctOrder: ['kupu1', 'kupu2'] },
+      { id: 'mo-5', prompt: 'Susun "kupu" + "kupu" (kata ulang).', stimulusAudio: ['kupu', 'kupu'], choices: [c('kupu1', 'kupu'), c('kupu2', 'kupu')], correctOrder: ['kupu1', 'kupu2'], anyOrder: true },
       { id: 'mo-6', prompt: 'Susun "per" + "main" + "an".', stimulusAudio: ['per', 'main', 'an'], choices: [c('per', 'per'), c('main', 'main'), c('an', 'an')], correctOrder: ['per', 'main', 'an'] },
       { id: 'mo-7', prompt: 'Susun "me" + "lihat".', stimulusAudio: ['me', 'lihat'], choices: [c('me', 'me'), c('lihat', 'lihat')], correctOrder: ['me', 'lihat'] },
-      { id: 'mo-8', prompt: 'Susun "lari" + "lari" (kata ulang).', stimulusAudio: ['lari', 'lari'], choices: [c('lari1', 'lari'), c('lari2', 'lari')], correctOrder: ['lari1', 'lari2'] },
+      { id: 'mo-8', prompt: 'Susun "lari" + "lari" (kata ulang).', stimulusAudio: ['lari', 'lari'], choices: [c('lari1', 'lari'), c('lari2', 'lari')], correctOrder: ['lari1', 'lari2'], anyOrder: true },
     ],
   },
 ];

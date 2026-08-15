@@ -111,8 +111,8 @@ const STAGE: Record<number, Stage> = {
       <>
         <span className="absolute text-4xl opacity-90" style={{ top: "6%", left: "10%" }}>☁️</span>
         <span className="absolute text-3xl opacity-80" style={{ top: "12%", right: "12%" }}>☁️</span>
-        <span className="absolute text-2xl" style={{ top: "3%", right: "24%" }}>☀️</span>
-        <span className="absolute" style={{ bottom: "-4%", left: "50%", transform: "translateX(-50%)", fontSize: "112px" }}>🏔️</span>
+        <span className="absolute text-2xl" style={{ top: "3%", right: "20%" }}>☀️</span>
+        <span className="absolute" style={{ bottom: "-8%", left: "50%", transform: "translateX(-50%)", fontSize: "112px" }}>🏔️</span>
       </>
     ),
   },

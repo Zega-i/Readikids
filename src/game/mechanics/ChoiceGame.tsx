@@ -95,11 +95,16 @@ export default function ChoiceGame({ skillId, accent = "#6dbb57", onComplete, on
     setLocked(false);
     setCiloText(cur.item.prompt);
     setHeard(new Set());
-    startRef.current = 0;
     if (shouldAutoplay) {
+      // Stimulus bunyi: soal diblokir sampai audio selesai; latensi dihitung
+      // sejak audio selesai diputar (playStimulus set startRef).
+      startRef.current = 0;
       const t = setTimeout(() => void playStimulus(cur.item), 350);
       return () => clearTimeout(t);
     }
+    // Stimulus visual (tanpa autoplay): soal langsung bisa dijawab tanpa
+    // menekan speaker; latensi dihitung sejak soal tampil.
+    startRef.current = performance.now();
     return;
   }, [idx, cur, playStimulus, shouldAutoplay]);
 
@@ -224,12 +229,13 @@ export default function ChoiceGame({ skillId, accent = "#6dbb57", onComplete, on
           {item.choices.map((ch) => {
             const hasSound = !!ch.audio;
             const played = heard.has(ch.id);
+            const chTransform = [ch.flip ? "scaleX(-1)" : null, ch.rotate ? `rotate(${ch.rotate}deg)` : null].filter(Boolean).join(" ");
             return (
               <button key={ch.id} type="button" onPointerDown={() => tapChoice(ch.id)} disabled={locked}
                 aria-label={`Pilih ${ch.label ?? ch.image ?? ch.id}${hasSound ? " (dengar lalu pilih)" : ""}`}
                 className="relative min-w-[84px] min-h-[84px] px-4 rounded-[26px] border-[5px] border-white bg-[#fff6e9] shadow-[0px_6px_0px_#e2d3bd,0px_12px_16px_rgba(74,55,40,0.12)] flex items-center justify-center cursor-pointer disabled:pointer-events-none active:scale-95 transition-transform">
-                {ch.image && <span className="text-4xl leading-none">{ch.image}</span>}
-                {ch.label && <span className="font-black text-[#4a3728] text-3xl leading-none">{ch.label}</span>}
+                {ch.image && <span className="text-4xl leading-none" style={chTransform ? { transform: chTransform, display: "inline-block" } : undefined}>{ch.image}</span>}
+                {ch.label && <span className="font-black text-[#4a3728] text-3xl leading-none" style={chTransform ? { transform: chTransform, display: "inline-block" } : undefined}>{ch.label}</span>}
                 {hasSound && (
                   <span className={`absolute top-1.5 right-2 text-base leading-none ${played ? "opacity-40" : "opacity-100"}`}>
                     {played ? "👂" : "🔊"}
