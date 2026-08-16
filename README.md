@@ -127,7 +127,8 @@ cd android && ./gradlew assembleDebug   # → ReadiKids-*.apk di android/app/bui
 - ✅ Cooldown skrining ulang 14–28 hari (soft-block, alasan pelanjutan dicatat)
 - ✅ 5 dunia berurutan (terkunci hingga dunia sebelumnya selesai) × 20 skill × 2 mekanik game
 - ✅ Pipeline hasil end-to-end: trial → profil fase → narasi observasi → dashboard pendamping
-- ✅ Laporan PDF on-device (pdf-lib): data skrining, **diagram radar 5 fase + konsistensi**, narasi per tahap, rencana pendampingan, saran tindak lanjut
+- ✅ Laporan PDF on-device (pdf-lib): data skrining, **diagram radar 5 fase + konsistensi**, narasi per tahap, rencana pendampingan, saran tindak lanjut, dan **jejak karbon sesi** (estimasi berbasis model, bahasa mudah)
+- ✅ Jejak karbon per sesi (SCI / ISO 21031 + SWDM v4) — terukur dari data nyata, konsisten antara tampilan & PDF
 - ✅ Narasi suara TTS Bahasa Indonesia di setiap instruksi (native Android + fallback web)
 - ✅ PWA installable + offline penuh (service worker)
 - ✅ Data local-first di perangkat (IndexedDB) + sinkron agregat opsional (Supabase)
