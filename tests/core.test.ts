@@ -8,6 +8,7 @@
  * tersebut ikut dirombak (lihat docs/refactor-v2.md).
  */
 import assert from 'node:assert/strict';
+import { inflateSync } from 'node:zlib';
 import { computeSkillMetric, aggregateByPhase } from '../src/telemetry/MetricCalculator';
 import {
   assessReading,
@@ -444,9 +445,59 @@ const main = async () => {
       metricExplanations: { 'fase-0': 'Anak tampak nyaman saat mengenal arah dan bentuk.' },
       disclaimer: 'Bukan diagnosis.',
     };
-    const bytes = await buildReferralReportPdf({ child, assessment, history: [], plan });
+
+    // Estimasi jejak karbon nyata (dari helper murni) untuk memastikan PDF
+    // memuat bagian "Jejak Karbon Sesi Ini" dengan narasi yang bisa dibaca.
+    const carbonEstimate = estimateSessionCarbon(
+      buildSessionCarbonInput({
+        session: { startedAt: 0, endedAt: 60_000 },
+        trials: [
+          {
+            sessionId: 's1', skillId: 'blending', mechanicId: 'blend', phase: 3, trialIndex: 0,
+            stimulus: 'buku', isDemo: false, latencyMs: 800, hesitationMs: 40, misclickCount: 0,
+            correct: true, errorType: null, selfCorrected: false, completedAt: 1000,
+          } as TrialRecord,
+        ],
+        dataTransferBytes: 1_000_000,
+        ai: { source: 'local-template', outputChars: 400 },
+      }),
+    );
+
+    const bytes = await buildReferralReportPdf({ child, assessment, history: [], plan, carbon: carbonEstimate });
     assert.ok(bytes.length > 1000);
     assert.equal(String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3]), '%PDF');
+
+    // Dekompresi stream FlateDecode + decode teks hex → pastikan bagian karbon
+    // (judul section & istilah CO2e) benar-benar dicetak di PDF.
+    const raw = Buffer.from(bytes);
+    const ascii = raw.toString('latin1');
+    let decoded = '';
+    const streamRe = /(?<!end)stream[\r\n]+/g;
+    let m: RegExpExecArray | null;
+    while ((m = streamRe.exec(ascii)) !== null) {
+      const sMark = m.index + m[0].length;
+      const eMark = ascii.indexOf('endstream', sMark);
+      if (eMark === -1) break;
+      const comp = raw.subarray(sMark, eMark);
+      const body = comp[comp.length - 1] === 0x0a || comp[comp.length - 1] === 0x0d
+        ? comp.subarray(0, comp.length - 1)
+        : comp;
+      try { decoded += inflateSync(body).toString('latin1'); } catch { /* bukan FlateDecode */ }
+      streamRe.lastIndex = eMark + 1;
+    }
+    const hexText = [...decoded.matchAll(/<([0-9A-Fa-f]+)>/g)]
+      .map((m) => m[1])
+      .filter((h) => h.length % 2 === 0)
+      .map((h) => {
+        let s = '';
+        for (let i = 0; i < h.length; i += 2) s += String.fromCharCode(parseInt(h.slice(i, i + 2), 16));
+        return s;
+      })
+      .join('\n');
+    const pdfText = `${decoded}\n${hexText}`;
+    assert.ok(pdfText.includes('Jejak Karbon Sesi Ini'), 'PDF harus memuat judul bagian Jejak Karbon');
+    assert.ok(pdfText.includes('CO2e'), 'PDF harus memuat istilah CO2e di bagian karbon');
+    assert.ok(pdfText.includes('bukan pengukuran laboratorium'), 'PDF harus memuat narasi disclaimer karbon');
   });
 
   console.log(`\n${passed} tes lulus.${process.exitCode ? ' (ADA KEGAGALAN)' : ''}`);

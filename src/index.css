@@ -1,4 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap');
+@import '@fontsource/nunito/latin-600.css';
+@import '@fontsource/nunito/latin-700.css';
+@import '@fontsource/nunito/latin-800.css';
+@import '@fontsource/nunito/latin-900.css';
 
 @tailwind base;
 @tailwind components;
@@ -25,6 +28,23 @@
 
   .all-unset {
     all: unset;
+  }
+}
+
+/* ── Fallback 100dvh → 100vh untuk WebView Android lama (tanpa dukungan dvh).
+   Sengaja TANPA @layer agar menang atas utilitas Tailwind yang ber-layer. ── */
+.h-\[100dvh\] {
+  height: 100vh;
+  height: 100dvh;
+}
+.min-h-\[100dvh\] {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+@media (min-width: 1024px) {
+  .lg\:h-\[100dvh\] {
+    height: 100vh;
+    height: 100dvh;
   }
 }
 

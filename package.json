@@ -2,7 +2,7 @@
   "name": "readikids",
   "private": true,
   "version": "0.1.0",
-  "description": "ReadiKids AI — Platform skrining dini disleksia & diskalkulia berbasis behavioral learning analytics",
+  "description": "ReadiKids AI — Platform skrining dini perkembangan membaca untuk anak usia 6-9 tahun, dipakai pendamping (orang tua/wali/guru/tutor), berbasis behavioral learning analytics",
   "type": "module",
   "scripts": {
     "dev": "vite",

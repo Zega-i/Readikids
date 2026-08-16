@@ -235,6 +235,8 @@ export default function App() {
           nextButtonText={viewingSessionId ? "← Kembali ke Riwayat" : undefined}
           onSavePDF={async (result) => {
             try {
+              const { computeSessionCarbon } = await import("./companion/CarbonFootprint");
+              const carbon = await computeSessionCarbon(result);
               const { buildReferralReportPdf } = await import("./referral/reportPdf");
               const pdfBytes = await buildReferralReportPdf({
                 child: activeProfile,
@@ -258,6 +260,7 @@ export default function App() {
                     level: r.assessment.level,
                   })),
                 plan: result.plan,
+                carbon: carbon?.estimate ?? null,
               });
               const filename = `Laporan_ReadiKids_${activeProfile.pseudonym}_${new Date().toISOString().split("T")[0]}.pdf`;
               await savePdf(pdfBytes, filename);

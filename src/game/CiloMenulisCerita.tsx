@@ -51,6 +51,13 @@ export const CiloMenulisCerita = ({
 
   const startTimeRef = useRef<number>(performance.now());
   const doneCalledRef = useRef(false);
+  /**
+   * Menahan Promise pipeline hasil (metrik → heuristic → AI/llm → simpan).
+   * React StrictMode (dev) me-mount efek DUA KALI; ref ini memastikan
+   * `processResults()` hanya dijalankan SEKALI (mencegah hasil duplikat
+   * dengan sessionId berbeda). Await promise yang sama aman diulang.
+   */
+  const procRef = useRef<Promise<void> | null>(null);
 
   // Simpan versi TERBARU dari prop/callback di ref, agar effect pemroses bisa
   // berjalan SEKALI di awal tanpa ikut ter-restart saat App render ulang.
@@ -78,7 +85,11 @@ export const CiloMenulisCerita = ({
       if (processResults) {
         // Jalankan pemrosesan NYATA (metrik → heuristic → AI/llm → simpan).
         // SYARAT pindah layar: promise ini selesai.
-        const proc = processResults();
+        // Hanya mulai SEKALI: ref menahan promise antar double-mount StrictMode.
+        if (!procRef.current) {
+          procRef.current = processResults();
+        }
+        const proc = procRef.current;
 
         // gerakkan indikator tahap secara halus selama menunggu
         const s1 = setTimeout(() => !cancelled && setStageIndex(1), 800);
@@ -141,29 +152,27 @@ export const CiloMenulisCerita = ({
           <span className="absolute z-10 text-xl animate-[twinkle_1.4s_ease-in-out_infinite]" style={{ left: -14, top: -12 }}>✨</span>
           <span className="absolute z-10 text-base animate-[twinkle_1.8s_ease-in-out_infinite]" style={{ right: -8, top: 30 }}>✨</span>
 
-          {/* Kertas — lurus (tanpa rotasi) agar rapi */}
-          <div className="relative bg-white rounded-[28px] shadow-[0px_10px_30px_rgba(74,55,40,0.12)] w-[236px] h-[320px] px-6 py-8">
+          {/* Kertas — sedikit miring (sesuai mockup); Cilo di luar agar tetap tegak */}
+          <div className="relative bg-white rounded-[28px] shadow-[0px_10px_30px_rgba(74,55,40,0.12)] w-[236px] h-[320px] px-6 py-8 rotate-[-4deg]">
             <div className="flex flex-col gap-[18px]">
               {/* garis-garis kertas (statis) */}
               {[86, 94, 78, 90, 72].map((w, i) => (
                 <div key={i} className="h-2.5 rounded-full bg-[#e8dfce]" style={{ width: `${w}%` }} />
               ))}
-              {/* baris yang sedang ditulis — dipisah agar tidak menempel garis statis */}
-              <div className="mt-1 h-10 flex flex-col justify-center">
-                <div className="relative h-2.5">
-                  <div className="h-2.5 rounded-full bg-[#c98a4b] transition-all duration-100"
-                    style={{ width: Math.min(20 + typedChars * 2, 130) }} />
-                  <span className="absolute -top-2 text-xl animate-[nib-bob_0.5s_ease-in-out_infinite]"
-                    style={{ left: Math.min(20 + typedChars * 2, 130) - 8 }}>✍️</span>
-                </div>
+              {/* baris yang sedang ditulis — flex-child langsung agar gap sama dengan garis statis */}
+              <div className="relative h-2.5">
+                <div className="h-2.5 rounded-full bg-[#c98a4b] transition-all duration-100"
+                  style={{ width: Math.min(20 + typedChars * 2, 130) }} />
+                <span className="absolute -top-2 text-xl animate-[nib-bob_0.5s_ease-in-out_infinite]"
+                  style={{ left: Math.min(20 + typedChars * 2, 130) - 8 }}>✍️</span>
               </div>
             </div>
           </div>
 
-          {/* Cilo mengintip — tetap berada dalam wadah ilustrasi */}
+          {/* Cilo mengintip — tetap LURUS, tidak ikut miring */}
           <div className="absolute -right-4 -bottom-1 w-[110px] h-[130px] pointer-events-none">
             <div className="absolute top-0 left-0 scale-[0.38] origin-top-left"><Cilo /></div>
-            <span className="absolute left-[60px] top-[82px] text-2xl rotate-[35deg]">✏️</span>
+            <span className="absolute left-[60px] top-[82px] text-2xl animate-[cilo-write_0.55s_ease-in-out_infinite]">✏️</span>
           </div>
         </div>
       </div>
@@ -192,8 +201,8 @@ export const CiloMenulisCerita = ({
       {/* Keyframes animasi */}
       <style>{`
         @keyframes cilo-write {
-          0%, 100% { transform: rotate(-8deg) translateY(0); }
-          50%      { transform: rotate(6deg) translateY(-4px); }
+          0%, 100% { transform: rotate(28deg) translate(-1px, 1px); }
+          50%      { transform: rotate(40deg) translate(2px, -3px); }
         }
         @keyframes nib-bob {
           0%, 100% { transform: translateX(0); }

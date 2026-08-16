@@ -11,10 +11,6 @@ import type { PhaseId } from "../types/telemetry";
 
 // Dunia dibuka BERURUTAN: hanya bisa masuk dunia berikutnya setelah dunia
 // sebelumnya diselesaikan. World pertama (fase 0) selalu terbuka.
-// CATATAN TEMPORER (uji coba): diset true agar SEMUA dunia terbuka tanpa
-// menyelesaikan dunia sebelumnya. Kembalikan ke false setelah selesai review.
-const UNLOCK_ALL = true;
-
 interface Pos { x: number; y: number; }
 interface Node { phase: PhaseId; name: string; emoji: string; accent: string; subtext: string; web: Pos; hp: Pos; }
 
@@ -54,7 +50,7 @@ export default function WorldMap({
   const active = NODES[selected] || NODES[0];
 
   const clickWorld = (index: number) => {
-    if (!UNLOCK_ALL && index > currentWorldIndex) {
+    if (index > currentWorldIndex) {
       setToast(`Selesaikan ${NODES[currentWorldIndex].name} dulu untuk membuka ${NODES[index].name}! 🔒`);
       setTimeout(() => setToast(null), 3000);
     } else {
@@ -85,7 +81,7 @@ export default function WorldMap({
   const renderNode = (world: Node, index: number, sizeActive: string, sizeIdle: string, bubbleTop: string) => {
     const isActive = index === selected;
     const isPassed = index < currentWorldIndex;
-    const isLocked = !UNLOCK_ALL && index > currentWorldIndex;
+    const isLocked = index > currentWorldIndex;
     const posKey = sizeActive.includes("24") ? "hp" : "web"; // hp memakai node lebih besar
     const pos = world[posKey === "hp" ? "hp" : "web"];
     return (

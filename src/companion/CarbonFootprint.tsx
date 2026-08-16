@@ -53,48 +53,56 @@ interface CarbonData {
   withoutAi: CarbonEstimate;
 }
 
+/**
+ * Hitung jejak karbon satu sesi dari data NYATA (trials + plan).
+ * Sumber kebenaran tunggal — dipakai chip UI & laporan PDF agar konsisten.
+ * Mengembalikan null bila data sesi tidak bisa dibaca.
+ */
+export async function computeSessionCarbon(result: ScreeningResult): Promise<CarbonData | null> {
+  try {
+    const trials = await db.trials.where("sessionId").equals(result.sessionId).toArray();
+    const plan = result.plan;
+    const outputText = [plan.summary, ...plan.companionActivities, ...plan.referralGuidance].join("");
+    const input: SessionCarbonInput = buildSessionCarbonInput({
+      session: { startedAt: result.startedAt, endedAt: result.endedAt },
+      trials,
+      dataTransferBytes: JSON.stringify(plan).length,
+      syncPayloadBytes:
+        JSON.stringify({
+          session: { startedAt: result.startedAt, endedAt: result.endedAt },
+          assessment: result.assessment,
+          plan: { summary: plan.summary },
+        }).length,
+      ai: plan.aiUsage
+        ? {
+            source: "gemini",
+            promptTokens: plan.aiUsage.promptTokens,
+            outputTokens: plan.aiUsage.outputTokens,
+          }
+        : {
+            source: plan.source,
+            promptChars: JSON.stringify(result.assessment).length,
+            outputChars: outputText.length,
+          },
+    });
+    return {
+      estimate: estimateSessionCarbon(input),
+      withoutAi: estimateSessionCarbon({ ...input, ai: { source: "local-template" } }),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export default function CarbonFootprint({ result }: Props): JSX.Element | null {
   const [data, setData] = useState<CarbonData | null>(null);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      try {
-        const trials = await db.trials.where("sessionId").equals(result.sessionId).toArray();
-        const plan = result.plan;
-        const outputText = [plan.summary, ...plan.companionActivities, ...plan.referralGuidance].join("");
-        const input: SessionCarbonInput = buildSessionCarbonInput({
-          session: { startedAt: result.startedAt, endedAt: result.endedAt },
-          trials,
-          dataTransferBytes: JSON.stringify(plan).length,
-          syncPayloadBytes:
-            JSON.stringify({
-              session: { startedAt: result.startedAt, endedAt: result.endedAt },
-              assessment: result.assessment,
-              plan: { summary: plan.summary },
-            }).length,
-          ai: plan.aiUsage
-            ? {
-                source: "gemini",
-                promptTokens: plan.aiUsage.promptTokens,
-                outputTokens: plan.aiUsage.outputTokens,
-              }
-            : {
-                source: plan.source,
-                promptChars: JSON.stringify(result.assessment).length,
-                outputChars: outputText.length,
-              },
-        });
-        if (cancelled) return;
-        setData({
-          estimate: estimateSessionCarbon(input),
-          withoutAi: estimateSessionCarbon({ ...input, ai: { source: "local-template" } }),
-        });
-      } catch {
-        if (!cancelled) setData(null);
-      }
-    })();
+    computeSessionCarbon(result).then((d) => {
+      if (!cancelled) setData(d);
+    });
     return () => {
       cancelled = true;
     };

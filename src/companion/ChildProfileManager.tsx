@@ -4,7 +4,6 @@
  * Web (desktop): daftar profil dengan hapus per-anak (tidak diubah — final).
  * APK (HP): desain mockup 66-38. Beda dari web:
  *   - Menu "suara instruksi" DIHILANGKAN.
- *   - "Font ramah disleksia" ditampilkan tapi belum aktif (segera hadir).
  *   - "Hapus semua data anak ini" (sekaligus) DITAMBAHKAN & aktif.
  */
 import { useEffect, useState } from 'react';

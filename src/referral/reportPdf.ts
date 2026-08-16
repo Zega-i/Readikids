@@ -18,6 +18,7 @@ import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from 'pdf-lib';
 import { PHASE_ACTIVITIES } from '../utils/fallbackTemplates';
 import { COOLDOWN_MIN_DAYS, COOLDOWN_RECOMMENDED_DAYS } from '../profiles/profileRules';
 import type { ProgressPoint } from '../analytics/BehavioralEngine';
+import type { CarbonEstimate } from '../utils/carbonFootprint';
 import type {
   ChildProfile,
   CompanionPlanResult,
@@ -415,6 +416,8 @@ export interface ReferralReportInput {
   history: ProgressPoint[];
   /** Rencana pendampingan terakhir (opsional). */
   plan: CompanionPlanResult | null;
+  /** Estimasi jejak karbon sesi (opsional — dihitung dari data nyata). */
+  carbon?: CarbonEstimate | null;
 }
 
 const fmtDate = (epochMs: number): string =>
@@ -503,6 +506,45 @@ function buildFollowUpNarrative(
   s += `Laporan ini hanya gambaran dari satu sesi bermain - bukan penilaian akhir. `;
   s += `Yang terpenting adalah kemajuan kecil yang terjadi hari demi hari.`;
   return s;
+}
+
+/** Format gram CO2e ramah baca (koma desimal, tanpa banyak angka belakang). */
+function fmtCarbonGrams(g: number): string {
+  const s = g >= 100 ? g.toFixed(0) : g >= 1 ? g.toFixed(1) : g.toFixed(2);
+  return s.replace('.', ',');
+}
+
+/**
+ * Narasi jejak karbon dalam bahasa mudah — menjelaskan bahwa angka ini
+ * perkiraan berbasis model dari sesi nyata, bukan pengukuran lab.
+ */
+function buildCarbonNarrative(input: ReferralReportInput): string[] {
+  const c = input.carbon;
+  if (!c) return [];
+  const total = fmtCarbonGrams(c.totalGCO2e);
+  const dev = fmtCarbonGrams(c.breakdown.deviceGCO2e);
+  const trf = fmtCarbonGrams(c.breakdown.transferGCO2e);
+  const ai = fmtCarbonGrams(c.breakdown.aiGCO2e);
+  const sync = fmtCarbonGrams(c.breakdown.syncGCO2e);
+
+  const parts: string[] = [
+    `Setiap sesi bermain memakai sedikit listrik: di perangkat, saat mengirim data, dan (bila dipakai) saat AI menyusun rencana. ` +
+      `Sesi ini diperkirakan menghasilkan sekitar ${total} g CO2e - sangat kecil, sebanding dengan menyalakan lampu beberapa menit. ` +
+      `Angka ini hanya perkiraan dari pola bermain anak (lama menjawab, jumlah soal, dan panjang teks), bukan pengukuran laboratorium.`,
+  ];
+
+  const rows: string[] = [];
+  rows.push(`Perangkat (anak bermain): ${dev} g`);
+  rows.push(`Transfer data: ${trf} g`);
+  rows.push(`AI / Gemini (rencana pendampingan): ${ai} g`);
+  rows.push(`Sinkronisasi: ${sync} g`);
+  parts.push(`Rinciannya: ${rows.join('; ')}.`);
+
+  parts.push(
+    'Perkiraan ini memakai metode SCI (ISO/IEC 21031) dan model SWDM v4. Besarannya bergantung pada ' +
+      'perangkat, jaringan, dan sumber listrik, serta tidak berkaitan dengan hasil skrining anak.',
+  );
+  return parts;
 }
 
 /** Bangun dokumen PDF dan kembalikan byte-nya (untuk diunduh/diuji). */
@@ -690,6 +732,14 @@ export async function buildReferralReportPdf(input: ReferralReportInput): Promis
   // 8 — Saran & tindak lanjut (selalu tampil sebagai bagian tersendiri)
   w.heading(`${section}. Saran & Tindak Lanjut`);
   w.paragraph(buildFollowUpNarrative(input, perPhase));
+  section += 1;
+
+  // 9 — Jejak karbon sesi (opsional; bila data tersedia) — di paling bawah
+  const carbonNotes = buildCarbonNarrative(input);
+  if (carbonNotes.length > 0) {
+    w.heading(`${section}. Jejak Karbon Sesi Ini`);
+    for (const note of carbonNotes) w.paragraph(note, { size: 9.5 });
+  }
 
   drawHeadersAndFooters(doc, fonts);
   return doc.save();

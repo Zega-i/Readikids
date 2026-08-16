@@ -29,26 +29,43 @@ create table if not exists public.sessions (
   age_years                int  not null,
   started_at               bigint not null,
   ended_at                 bigint,
-  games                    text[] not null default '{}',
+  skills                   text[] not null default '{}',
   cooldown_override_reason text
 );
 create index if not exists sessions_owner_idx on public.sessions (owner_id);
 create index if not exists sessions_child_idx on public.sessions (child_ref);
 
--- ── Tabel: assessments (hasil penilaian risiko per sesi) ──────────────────
+-- ── Tabel: assessments (hasil penilaian per sesi) ─────────────────────────
+-- Kontrak v2 (membaca): profil per-fase → fase tertinggi + gap fase–usia.
+-- Kolom lama v1 (composite_score/breakdown/domains/metrics) sudah dihapus.
 create table if not exists public.assessments (
-  id              uuid primary key default gen_random_uuid(),
-  owner_id        uuid not null default auth.uid() references auth.users (id) on delete cascade,
-  session_id      uuid not null unique references public.sessions (id) on delete cascade,
-  child_ref       uuid not null references public.children (id) on delete cascade,
-  composite_score int  not null,
-  level           text not null check (level in ('LOW','MEDIUM','HIGH')),
-  breakdown       jsonb not null,   -- { reversalScore, hesitationScore, nleeScore }
-  domains         jsonb not null,   -- { dyslexia, dyscalculia }
-  metrics         jsonb not null,   -- TelemetryMetrics agregat
-  created_at      bigint not null
+  id                    uuid primary key default gen_random_uuid(),
+  owner_id              uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  session_id            uuid not null unique references public.sessions (id) on delete cascade,
+  child_ref             uuid not null references public.children (id) on delete cascade,
+  age_years             int  not null,
+  level                 text not null check (level in ('LOW','MEDIUM','HIGH')),
+  highest_phase_reached int  not null,
+  phase_age_gap         int  not null,
+  per_phase             jsonb not null,
+  created_at            bigint not null
 );
 create index if not exists assessments_owner_idx on public.assessments (owner_id);
+
+-- ── Migrasi skema v1 → v2 (aman dijalankan ulang, idempoten) ──────────────
+-- Untuk database yang sudah pernah menjalankan skema lama: tambah kolom baru
+-- dan buang kolom lama (NOT NULL lama akan memblokir upsert v2).
+alter table public.sessions add column if not exists skills text[] not null default '{}';
+alter table public.sessions drop column if exists games;
+
+alter table public.assessments add column if not exists age_years             int;
+alter table public.assessments add column if not exists highest_phase_reached int;
+alter table public.assessments add column if not exists phase_age_gap         int;
+alter table public.assessments add column if not exists per_phase             jsonb;
+alter table public.assessments drop column if exists composite_score;
+alter table public.assessments drop column if exists breakdown;
+alter table public.assessments drop column if exists domains;
+alter table public.assessments drop column if exists metrics;
 
 -- Kolom Rencana Pendampingan (misi rumah & narasi) — disimpan bersama hasil
 -- agar konsisten lintas tampilan & perangkat. Ditambah terpisah agar aman
