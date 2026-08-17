@@ -1,6 +1,6 @@
 <div align="center">
 
-# 📚 ReadiKids AI
+# 📚 ReadiKids 
 
 **Skrining dini perkembangan membaca untuk anak usia 6–9 tahun — arsitektur local-first, berjalan penuh bahkan tanpa internet.**
 
