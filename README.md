@@ -50,7 +50,7 @@ Dunia 5 · Puncak Kata      ─ fase 4 · merangkai suku kata & kata
 | --- | --- |
 | 🔒 **Privasi kuat** | Event perilaku mentah tidak pernah meninggalkan perangkat — hanya metrik agregat yang (opsional) disinkron. Tanpa nama asli (pseudonym + `childRef`). |
 | 📡 **Offline-first** | PWA installable yang tetap 100% fungsional tanpa internet; sinkronisasi & AI hanya lapisan opsional saat online — cocok untuk sekolah & daerah minim sinyal. |
-| 🧠 **Multi-sinyal per item** | Skrining dari *cara* anak bermain: akurasi, latency, jenis error, dan self-correction — bukan sekadar benar/salah. |
+| 🧠 **Multi-sinyal per item** | Skrining dari *cara* anak bermain: akurasi, latency, jenis error, dan pola keraguan (hesitasi) — bukan sekadar benar/salah. |
 | 🧒 **Ramah anak** | Kid Mode tak pernah menampilkan skor, timer, atau leaderboard — hanya pujian partisipasi netral. Dunia terkunci berurutan; anak selalu memulai dari dunia pertama. |
 | 🤝 **Bahasa observasi** | Hasil untuk Pendamping selalu berupa observasi + disclaimer, tidak pernah vonis. Laporan PDF = narasi deskriptif + diagram radar 5 fase. |
 | 🔌 **Tanpa titik gagal** | LLM (Gemini) opsional; bila offline/tanpa key, otomatis pakai template lokal. |
@@ -65,9 +65,9 @@ menyusun Rencana Pendampingan.
 
 ```
 Anak bermain (Kid Mode)
-      │  tap · latency · jenis error · self-correction
+      │  tap · latency · jenis error · hesitasi
       ▼
-TelemetryLogger ── batch 60 event/1 dtk ──►  IndexedDB (Dexie, local-first)
+Pipeline hasil (resultsPipeline, on-device) ──►  IndexedDB (Dexie, local-first)
       ▼
 MetricCalculator   akurasi per skill (6–8 item skor + 2 demo) → reliability per fase
       ▼
@@ -108,7 +108,7 @@ Uji koneksi Gemini: `npm run test:ai`.
 | `npm run dev` | Dev server (Vite, hot reload) |
 | `npm run build` | Build produksi (`tsc -b && vite build`) |
 | `npm run preview` | Pratinjau hasil build |
-| `npm test` | Unit test core engine (22 tes: metrik, heuristic, aturan profil, telemetri, PDF) |
+| `npm test` | Unit test core engine (34 tes: metrik, heuristic, aturan profil, telemetri, PDF, navigasi hash) |
 | `npm run typecheck` | Type-check strict (`tsc -b --force`) |
 | `npm run test:ai` | Uji koneksi Gemini ke proxy AI |
 
@@ -132,7 +132,7 @@ cd android && ./gradlew assembleDebug   # → ReadiKids-*.apk di android/app/bui
 - ✅ Narasi suara TTS Bahasa Indonesia di setiap instruksi (native Android + fallback web)
 - ✅ PWA installable + offline penuh (service worker)
 - ✅ Data local-first di perangkat (IndexedDB) + sinkron agregat opsional (Supabase)
-- ✅ Ekspor/impor data (file) untuk kebutuhan instansi — tanpa internet
+- 🚧 Ekspor/impor data (file) untuk kebutuhan instansi — modul tersedia, akses dari UI menyusul (lihat Roadmap Tier 1.5)
 
 ## 🛠️ Tech Stack
 
@@ -148,7 +148,7 @@ cd android && ./gradlew assembleDebug   # → ReadiKids-*.apk di android/app/bui
 src/
 ├── telemetry/   TelemetryDB · TelemetryLogger · MetricCalculator   [inti, dilindungi]
 ├── ml/          heuristic (profil fase + gap) · llmRecommendation (Gemini + fallback)
-├── analytics/   BehavioralEngine (analisis sesi & progres antar sesi)
+├── analytics/   BehavioralEngine (analisis sesi — integrasi ke alur menyusul)
 ├── profiles/    childProfileService · profileRules (usia 6–9, cooldown)
 ├── onboarding/  ParentConsentCilo
 ├── game/        WorldMap (5 dunia) · WorldHub (Papan Misi) · mechanics/ (ChoiceGame · BuildGame) · trialBank · resultsPipeline
