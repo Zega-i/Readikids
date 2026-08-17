@@ -11,10 +11,10 @@ export default defineConfig({
       includeAssets: ['fonts/*.otf'],
       manifest: {
         id: '/',
-        name: 'ReadiKids AI — Skrining Dini Kesulitan Belajar',
+        name: 'ReadiKids AI — Skrining Dini Hambatan Membaca',
         short_name: 'ReadiKids',
         description:
-          'Skrining awal indikasi disleksia & diskalkulia untuk anak 6–9 tahun lewat permainan. Bukan alat diagnosis.',
+          'Skrining awal indikasi risiko kesulitan membaca untuk anak 6–9 tahun lewat permainan. Bukan alat diagnosis.',
         lang: 'id',
         start_url: '/',
         display: 'standalone',

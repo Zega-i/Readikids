@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CiloKancil } from "../components/CiloKancil";
 import InstallModal from "../components/InstallModal";
+import DataWarningModal, { hasSeenDataWarning } from "../components/DataWarningModal";
 
 // Kartu langkah (versi web / desktop)
 const stepsCilo = [
@@ -30,13 +31,29 @@ const tilesMobile = [
 
 interface LandingPageProps {
   onStart: () => void;
+  /** true jika sudah ada profil anak di device (alur kembali → beranda). */
+  hasExistingData?: boolean;
 }
 
-export default function LandingPage({ onStart }: LandingPageProps): JSX.Element {
+export default function LandingPage({ onStart, hasExistingData = false }: LandingPageProps): JSX.Element {
   const [statusMessage, setStatusMessage] = useState("");
   const [showInstallModal, setShowInstallModal] = useState(false);
+  const [showDataWarning, setShowDataWarning] = useState(false);
 
   const handleStartAdventure = () => {
+    // Pop-out hanya muncul jika:
+    // 1. Belum ada data anak (first-time user)
+    // 2. Peringatan belum pernah dilihat di perangkat ini
+    if (!hasExistingData && !hasSeenDataWarning()) {
+      setShowDataWarning(true);
+      return;
+    }
+    setStatusMessage("Misi petualangan dimulai.");
+    onStart();
+  };
+
+  const handleWarningAccepted = () => {
+    setShowDataWarning(false);
     setStatusMessage("Misi petualangan dimulai.");
     onStart();
   };
@@ -214,6 +231,9 @@ export default function LandingPage({ onStart }: LandingPageProps): JSX.Element 
 
       {/* W0b · Modal Pasang Aplikasi (web saja) */}
       <InstallModal open={showInstallModal} onClose={() => setShowInstallModal(false)} />
+
+      {/* Pop-out peringatan data lokal — hanya muncul sekali, first-time user */}
+      <DataWarningModal open={showDataWarning} onAccept={handleWarningAccepted} />
     </main>
   );
 }

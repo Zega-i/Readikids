@@ -55,8 +55,12 @@ export const PHASE_ACTIVITIES: Record<PhaseId, string[]> = {
   ],
 };
 
-/** Panduan tindak lanjut per level keseluruhan — disampaikan lembut & suportif. */
-const FOLLOW_UP: Record<RiskLevel, string[]> = {
+/**
+ * Panduan tindak lanjut per level keseluruhan — disampaikan lembut & suportif.
+ * SUMBER TUNGGAL rujukan: dibuat deterministik dari hasil perhitungan
+ * (assessment.level), TIDAK dari LLM, agar indikator ↔ narasi selalu selaras.
+ */
+export const FOLLOW_UP: Record<RiskLevel, string[]> = {
   LOW: [
     'Untuk saat ini belum ada yang perlu dikhawatirkan — dampingi kegiatan membaca sehari-hari dan nikmati prosesnya bersama.',
     'Bila suatu saat anak tampak jauh lebih kesulitan membaca dibanding teman seusianya, tidak ada salahnya mengobrol dengan gurunya.',
@@ -82,22 +86,49 @@ function phaseSentence(p: PhaseResult): string {
   return `Saat ${area}, anak masih memerlukan dukungan lebih. Inilah bagian yang paling bermanfaat untuk didampingi bersama.`;
 }
 
-/** Ringkasan naratif — observasi, tanpa vonis & tanpa skor menonjol. */
+/**
+ * Ringkasan naratif — observasi, tanpa vonis & tanpa skor menonjol.
+ * Nada SELALU mengikuti level keseluruhan (assessment.level) agar tidak
+ * bertentangan dengan indikator yang tampil di halaman hasil (mis. indikator
+ * MEDIUM/HIGH tapi narasi "berkembang baik untuk usianya", atau sebaliknya).
+ */
 function summarize(profile: ChildProfileForPlan): string {
   const a = profile.assessment;
   const reachedArea = PHASE_AREA[a.highestPhaseReached];
   const watch = [...a.perPhase].sort((x, y) => x.phase - y.phase).find((p) => p.level !== 'LOW');
   let s = `Dari sesi bermain, anak sudah menunjukkan kenyamanan sampai tahap ${reachedArea}. `;
-  s += watch
-    ? `Tahap ${PHASE_AREA[watch.phase]} tampak paling terbantu bila didampingi. `
-    : `Tahap-tahap yang dimainkan tampak berkembang baik untuk usianya. `;
+  if (a.level === 'LOW') {
+    s += 'Tahap-tahap yang dimainkan tampak berkembang baik untuk usianya. ';
+  } else if (watch) {
+    s += `Tahap ${PHASE_AREA[watch.phase]} tampak paling terbantu bila didampingi. `;
+  } else {
+    s += 'Masih ada tahap berikutnya yang tampak belum sepenuhnya nyaman dan layak diamati lebih lanjut. ';
+  }
   s += 'Saran di bawah adalah kegiatan sehari-hari yang aman dan menyenangkan dilakukan siapa saja.';
   return s;
+}
+
+/**
+ * Narasi deterministik dari profil fase & level — summary + penjelasan per fase.
+ * SUMBER TUNGGAL narasi: dipakai template lokal DAN sebagai pengaman narasi
+ * LLM (Gemini) agar indikator ↔ kata-kata tidak pernah bertentangan. Tetap
+ * bervariasi per anak karena disusun dari profil fase anak tersebut.
+ */
+export function buildDeterministicNarrative(profile: ChildProfileForPlan): {
+  summary: string;
+  metricExplanations: MetricExplanations;
+} {
+  const metricExplanations: MetricExplanations = {};
+  for (const p of [...profile.assessment.perPhase].sort((x, y) => x.phase - y.phase)) {
+    metricExplanations[`fase-${p.phase}`] = phaseSentence(p);
+  }
+  return { summary: summarize(profile), metricExplanations };
 }
 
 /** Bangun Rencana Pendampingan dari template lokal — deterministik & offline. */
 export function generateLocalCompanionPlan(profile: ChildProfileForPlan): CompanionPlanResult {
   const a = profile.assessment;
+  const { summary, metricExplanations } = buildDeterministicNarrative(profile);
 
   const needsSupport = [...a.perPhase]
     .filter((p) => p.level !== 'LOW')
@@ -111,15 +142,10 @@ export function generateLocalCompanionPlan(profile: ChildProfileForPlan): Compan
     ];
   }
 
-  const metricExplanations: MetricExplanations = {};
-  for (const p of [...a.perPhase].sort((x, y) => x.phase - y.phase)) {
-    metricExplanations[`fase-${p.phase}`] = phaseSentence(p);
-  }
-
   return {
     source: 'local-template',
     generatedAt: Date.now(),
-    summary: summarize(profile),
+    summary,
     companionActivities,
     referralGuidance: FOLLOW_UP[a.level],
     metricExplanations,

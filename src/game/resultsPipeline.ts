@@ -17,8 +17,6 @@ import { generateCompanionPlan } from '../ml/llmRecommendation';
 import { pushSessionResult } from '../../backend/syncService';
 import type {
   ChildProfile,
-  ChildProfileForPlan,
-  CompanionPlanResult,
   SessionRecord,
   SkillId,
   TrialRecord,
@@ -34,11 +32,6 @@ export interface RunScreeningInput {
   /** Skill yang diprobe dalam sesi (metadata sesi; adaptive → tak selalu semua). */
   skills: SkillId[];
   cooldownOverrideReason?: string | null;
-  /**
-   * Override generator rencana — untuk pengujian/QA (mis. memaksa template
-   * lokal tanpa panggilan jaringan). Default: generateCompanionPlan.
-   */
-  planGenerator?: (profile: ChildProfileForPlan) => Promise<CompanionPlanResult>;
 }
 
 /**
@@ -80,7 +73,7 @@ export async function runScreeningPipeline(input: RunScreeningInput): Promise<Sc
   // 2) Rencana pendampingan (LLM bila ada key, jika tidak template lokal).
   //    Dibangkitkan SEKALI lalu DISIMPAN agar misi & narasi konsisten di semua
   //    tampilan dan tak berubah tiap buka.
-  const plan = await (input.planGenerator ?? generateCompanionPlan)({
+  const plan = await generateCompanionPlan({
     childRef: input.profile.id,
     ageYears: input.profile.ageYears,
     assessment,

@@ -37,6 +37,8 @@ import {
   type TrialRecord,
 } from '../src/types/telemetry';
 import { buildReferralReportPdf, sanitizePdfText } from '../src/referral/reportPdf';
+import { generateCompanionPlan } from '../src/ml/llmRecommendation';
+import { FOLLOW_UP, generateLocalCompanionPlan } from '../src/utils/fallbackTemplates';
 import {
   buildSessionCarbonInput,
   classifyLoadClass,
@@ -498,6 +500,215 @@ const main = async () => {
     assert.ok(pdfText.includes('Jejak Karbon Sesi Ini'), 'PDF harus memuat judul bagian Jejak Karbon');
     assert.ok(pdfText.includes('CO2e'), 'PDF harus memuat istilah CO2e di bagian karbon');
     assert.ok(pdfText.includes('bukan pengukuran laboratorium'), 'PDF harus memuat narasi disclaimer karbon');
+
+    // Indikator kategori observasi — harus merepresentasikan halaman hasil.
+    // assessment.level = MEDIUM → label "Perlu Diamati" + "Sampai tahap ...".
+    assert.ok(pdfText.includes('Perlu Diamati'), 'PDF harus memuat label indikator sesuai level (MEDIUM)');
+    assert.ok(pdfText.includes('Sampai tahap'), 'PDF harus memuat teks posisi tahap di indikator');
+
+    // Saran & tindak lanjut di PDF harus SELARAS dengan kotak "Saran Tindak
+    // Lanjut" di halaman hasil — memakai FOLLOW_UP[level] yang sama (bukan
+    // narasi bebas yang bisa bertentangan dengan indikator).
+    assert.ok(
+      pdfText.includes('Mengobrol dengan guru atau pendamping belajar anak'),
+      'PDF harus memuat poin tindak lanjut FOLLOW_UP.MEDIUM (sinkron dengan dashboard)',
+    );
+    assert.ok(
+      pdfText.includes('laporan dari aplikasi ini bisa dibawa saat berkonsultasi'),
+      'PDF harus memuat poin konsultasi FOLLOW_UP.MEDIUM (bukan mengecilkan)',
+    );
+  });
+
+  console.log('\n— Sinkronisasi indikator ↔ perhitungan ↔ Gemini (rujukan) —');
+
+  await test('Narasi local-template: level MEDIUM/HIGH tidak boleh berbunyi "berkembang baik untuk usianya"', () => {
+    // Skenario A: semua fase ter-probe LOW tapi overall MEDIUM (gap fase-usia).
+    const perPhase: PhaseResult[] = [0, 1, 2, 3].map((phase) => ({
+      phase: phase as PhaseId,
+      reliability: 85,
+      skills: [],
+      reached: true,
+      level: 'LOW' as RiskLevel,
+    }));
+    const assessment: RiskAssessment = {
+      sessionId: 's1',
+      childRef: 'anon-01',
+      ageYears: 8,
+      createdAt: 0,
+      highestPhaseReached: 3,
+      phaseAgeGap: 1,
+      level: 'MEDIUM',
+      perPhase,
+    };
+    const plan = generateLocalCompanionPlan({ childRef: 'anon-01', ageYears: 8, assessment });
+    // Nada harus mengikuti indikator MEDIUM, bukan menyiratkan LOW.
+    assert.ok(
+      !plan.summary.includes('berkembang baik untuk usianya'),
+      'Ringkasan MEDIUM tidak boleh menyatakan "berkembang baik untuk usianya"',
+    );
+    assert.ok(
+      plan.summary.includes('layak diamati'),
+      'Ringkasan MEDIUM harus menyiratkan ada tahap yang perlu diamati',
+    );
+    assert.deepEqual(plan.referralGuidance, FOLLOW_UP.MEDIUM);
+  });
+
+  await test('Narasi local-template: level LOW dengan satu fase MEDIUM tetap ber-"Berkembang Baik"', () => {
+    // Skenario B: overall LOW (gap 0) tapi fase di luar ekspektasi ter-probe MEDIUM.
+    const perPhase: PhaseResult[] = [
+      { phase: 0, reliability: 90, skills: [], reached: true, level: 'LOW' },
+      { phase: 1, reliability: 90, skills: [], reached: true, level: 'LOW' },
+      { phase: 2, reliability: 90, skills: [], reached: true, level: 'LOW' },
+      { phase: 3, reliability: 55, skills: [], reached: false, level: 'MEDIUM' },
+    ];
+    const assessment: RiskAssessment = {
+      sessionId: 's2',
+      childRef: 'anon-02',
+      ageYears: 6,
+      createdAt: 0,
+      highestPhaseReached: 2,
+      phaseAgeGap: 0,
+      level: 'LOW',
+      perPhase,
+    };
+    const plan = generateLocalCompanionPlan({ childRef: 'anon-02', ageYears: 6, assessment });
+    assert.ok(
+      plan.summary.includes('berkembang baik untuk usianya'),
+      'Ringkasan LOW harus sejalan dengan indikator "Berkembang Baik"',
+    );
+    // Saran tetap lembut — tidak mengarah ke profesional.
+    assert.deepEqual(plan.referralGuidance, FOLLOW_UP.LOW);
+  });
+
+  await test('Gemini: referralGuidance SELALU ditimpa oleh FOLLOW_UP[level] perhitungan', async () => {
+    // Skor perhitungan menentukan level; Gemini mencoba mengirim teks agresif.
+    const assessment: RiskAssessment = {
+      sessionId: 's1',
+      childRef: 'anon-01',
+      ageYears: 8,
+      createdAt: 0,
+      highestPhaseReached: 4,
+      phaseAgeGap: 0,
+      level: 'LOW',
+      perPhase: [],
+    };
+    const originalFetch = globalThis.fetch;
+    (globalThis as { fetch: typeof fetch }).fetch = (async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        summary: 'segala sesuatu tampak baik',
+        companionActivities: ['Membaca bersama'],
+        referralGuidance: ['SEGERA konsultasi ke psikolog karena anak terlihat bermasalah'],
+        metricExplanations: { 'fase-0': 'nyaman' },
+        aiUsage: { promptTokens: 10, outputTokens: 5 },
+      }),
+    })) as typeof fetch;
+
+    try {
+      const plan = await generateCompanionPlan({ childRef: 'anon-01', ageYears: 8, assessment });
+      assert.equal(plan.source, 'gemini');
+      assert.deepEqual(plan.referralGuidance, FOLLOW_UP.LOW);
+      // Narasi Gemini yang menakutkan TIDAK boleh bocor ke UI.
+      assert.ok(!plan.referralGuidance.some((g) => /psikolog/i.test(g)));
+      // Summary deterministik dari level — summary LLM yang bertentangan
+      // ("segala sesuatu tampak baik") TIDAK boleh bocor.
+      assert.ok(
+        plan.summary.includes('berkembang baik untuk usianya'),
+        'summary harus deterministik dari level LOW',
+      );
+      assert.ok(
+        !plan.summary.includes('segala sesuatu tampak baik'),
+        'summary LLM tidak boleh bocor (harus ditimpa narasi deterministik)',
+      );
+      // Satu-satunya bagian yang diperkaya Gemini: kegiatan rumah.
+      assert.deepEqual(plan.companionActivities, ['Membaca bersama']);
+    } finally {
+      (globalThis as { fetch: typeof fetch }).fetch = originalFetch;
+    }
+  });
+
+  await test('Gemini: level HIGH → rujukan tetap memakai FOLLOW_UP.HIGH (konsultasi guru/psikolog)', async () => {
+    const assessment: RiskAssessment = {
+      sessionId: 's2',
+      childRef: 'anon-02',
+      ageYears: 8,
+      createdAt: 0,
+      highestPhaseReached: 1,
+      phaseAgeGap: 3,
+      level: 'HIGH',
+      perPhase: [],
+    };
+    const originalFetch = globalThis.fetch;
+    (globalThis as { fetch: typeof fetch }).fetch = (async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        summary: 'anak tampak masih memerlukan dukungan',
+        companionActivities: ['Bermain suku kata'],
+        referralGuidance: ['TIDAK PERLU dilakukan apa-apa, biarkan saja'],
+        metricExplanations: { 'fase-0': 'perlu dukungan' },
+      }),
+    })) as typeof fetch;
+
+    try {
+      const plan = await generateCompanionPlan({ childRef: 'anon-02', ageYears: 8, assessment });
+      assert.equal(plan.source, 'gemini');
+      assert.deepEqual(plan.referralGuidance, FOLLOW_UP.HIGH);
+      // Rujukan yang mengecilkan (HIGH namun "biarkan saja") tidak boleh bocor.
+      assert.ok(plan.referralGuidance.some((g) => /guru|psikolog/i.test(g)));
+      // Summary deterministik dari level HIGH — summary LLM tidak boleh bocor.
+      assert.ok(
+        plan.summary.includes('belum sepenuhnya nyaman'),
+        'summary harus deterministik dari level HIGH',
+      );
+      assert.ok(!plan.summary.includes('anak tampak masih memerlukan dukungan'));
+    } finally {
+      (globalThis as { fetch: typeof fetch }).fetch = originalFetch;
+    }
+  });
+
+  await test('Gemini: metricExplanations deterministik per fase (tidak bocor narasi LLM yang kontradiktif)', async () => {
+    // Skenario: fase-0 kuat (LOW) tapi Gemini mengirim kalimat alarm untuknya.
+    const perPhase: PhaseResult[] = [
+      { phase: 0, reliability: 90, skills: [], reached: true, level: 'LOW' },
+    ];
+    const assessment: RiskAssessment = {
+      sessionId: 's3',
+      childRef: 'anon-03',
+      ageYears: 6,
+      createdAt: 0,
+      highestPhaseReached: 0,
+      phaseAgeGap: 0,
+      level: 'LOW',
+      perPhase,
+    };
+    const originalFetch = globalThis.fetch;
+    (globalThis as { fetch: typeof fetch }).fetch = (async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        summary: 'anak tampak bermasalah',
+        companionActivities: ['Tepuk suku kata'],
+        referralGuidance: ['konsultasi sekarang'],
+        metricExplanations: { 'fase-0': 'anak tampak bermasalah dan perlu pemeriksaan' },
+      }),
+    })) as typeof fetch;
+
+    try {
+      const plan = await generateCompanionPlan({ childRef: 'anon-03', ageYears: 6, assessment });
+      // Pengamatan per fase harus dari phaseSentence (deterministik level fase).
+      assert.equal(
+        plan.metricExplanations['fase-0'],
+        'Anak tampak nyaman saat mengenal arah dan bentuk.',
+      );
+      assert.ok(
+        !plan.metricExplanations['fase-0'].includes('bermasalah'),
+        'kalimat alarm dari LLM tidak boleh bocor ke Pengamatan Per Tahap',
+      );
+    } finally {
+      (globalThis as { fetch: typeof fetch }).fetch = originalFetch;
+    }
   });
 
   console.log(`\n${passed} tes lulus.${process.exitCode ? ' (ADA KEGAGALAN)' : ''}`);

@@ -33,7 +33,7 @@ function median(xs: number[]): number {
 const clamp = (x: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, x));
 
 /**
- * Metrik satu skill dari trial-trialnya. Soal demo (`isDemo`) diabaikan.
+ * Metrik satu skill dari trial-trialnya.
  *
  * reliability = akurasi × konsistensi:
  *  - akurasi = benar / item non-demo

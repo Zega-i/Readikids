@@ -528,7 +528,7 @@ const BANKS: SkillBank[] = [
     intro: 'Susun huruf jadi suku kata yang benar.',
     demo: [
       { id: 'sy-d1', prompt: 'Susun jadi "ba".', stimulusAudio: 'ba', choices: [c('b', 'b'), c('a', 'a')], correctOrder: ['b', 'a'] },
-      { id: 'sy-d2', prompt: 'Susun jadi "pa".', stimulusAudio: 'pa', choices: [c('p', 'p'), c('a', 'a')], correctOrder: ['p', 'a'] },
+      { id: 'sy-d2', prompt: 'Susun jadi "at".', stimulusAudio: 'at', choices: [c('a', 'a'), c('t', 't')], correctOrder: ['a', 't'] },
     ],
     items: [
       { id: 'sy-1', prompt: 'Susun jadi "bu".', stimulusAudio: 'bu', choices: [c('b', 'b'), c('u', 'u')], correctOrder: ['b', 'u'] },
@@ -536,8 +536,8 @@ const BANKS: SkillBank[] = [
       { id: 'sy-3', prompt: 'Susun jadi "tas".', stimulusAudio: 'tas', choices: [c('t', 't'), c('a', 'a'), c('s', 's')], correctOrder: ['t', 'a', 's'] },
       { id: 'sy-4', prompt: 'Susun jadi "mi".', stimulusAudio: 'mi', choices: [c('m', 'm'), c('i', 'i')], correctOrder: ['m', 'i'] },
       { id: 'sy-5', prompt: 'Susun jadi "pot".', stimulusAudio: 'pot', choices: [c('p', 'p'), c('o', 'o'), c('t', 't')], correctOrder: ['p', 'o', 't'] },
-      { id: 'sy-6', prompt: 'Susun jadi "lu".', stimulusAudio: 'lu', choices: [c('l', 'l'), c('u', 'u')], correctOrder: ['l', 'u'] },
-      { id: 'sy-7', prompt: 'Susun jadi "ri".', stimulusAudio: 'ri', choices: [c('r', 'r'), c('i', 'i')], correctOrder: ['r', 'i'] },
+      { id: 'sy-6', prompt: 'Susun jadi "at".', stimulusAudio: 'at', choices: [c('a', 'a'), c('t', 't')], correctOrder: ['a', 't'] },
+      { id: 'sy-7', prompt: 'Susun jadi "am".', stimulusAudio: 'am', choices: [c('a', 'a'), c('m', 'm')], correctOrder: ['a', 'm'] },
       { id: 'sy-8', prompt: 'Susun jadi "kut".', stimulusAudio: 'kut', choices: [c('k', 'k'), c('u', 'u'), c('t', 't')], correctOrder: ['k', 'u', 't'] },
     ],
   },

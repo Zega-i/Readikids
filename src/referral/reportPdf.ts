@@ -15,7 +15,7 @@
  * berbasis pengamatan, bukan penilaian akademik.
  */
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from 'pdf-lib';
-import { PHASE_ACTIVITIES } from '../utils/fallbackTemplates';
+import { FOLLOW_UP, PHASE_ACTIVITIES } from '../utils/fallbackTemplates';
 import { COOLDOWN_MIN_DAYS, COOLDOWN_RECOMMENDED_DAYS } from '../profiles/profileRules';
 import type { ProgressPoint } from '../analytics/BehavioralEngine';
 import type { CarbonEstimate } from '../utils/carbonFootprint';
@@ -93,6 +93,28 @@ const COLOR_ACCENT = rgb(0.17, 0.54, 0.54); // teal kompas (#2B8A8A)
 const COLOR_RULE = rgb(0.85, 0.87, 0.91);
 const COLOR_CHART_FILL = rgb(0.29, 0.6, 0.6); // area jaring laba-laba (teal lebih gelap)
 const COLOR_CHART_LINE = rgb(0.1, 0.37, 0.37);
+
+/** Konversi hex (#RRGGBB) → pdf-lib rgb (0..1). */
+function hexToRgb(hex: string): ReturnType<typeof rgb> {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.slice(0, 2), 16) / 255;
+  const g = parseInt(h.slice(2, 4), 16) / 255;
+  const b = parseInt(h.slice(4, 6), 16) / 255;
+  return rgb(r, g, b);
+}
+
+/**
+ * Warna & label indikator kategori — DICOCEK dengan pill "JourneyChip" di
+ * CompanionDashboard.tsx agar PDF merepresentasikan halaman hasil identik.
+ */
+const CATEGORY_STYLE: Record<
+  RiskLevel,
+  { bg: ReturnType<typeof rgb>; dot: ReturnType<typeof rgb>; text: ReturnType<typeof rgb>; label: string }
+> = {
+  LOW: { bg: hexToRgb('#eaf7e0'), dot: hexToRgb('#6dbb57'), text: hexToRgb('#2f5b23'), label: 'Berkembang Baik' },
+  MEDIUM: { bg: hexToRgb('#fef6e0'), dot: hexToRgb('#e0993a'), text: hexToRgb('#6b5215'), label: 'Perlu Diamati' },
+  HIGH: { bg: hexToRgb('#fdece9'), dot: hexToRgb('#d96b5a'), text: hexToRgb('#6b2a1f'), label: 'Perlu Didampingi Lebih' },
+};
 
 /** Label sumbu radar — segi enam: 5 fase + konsistensi. */
 const RADAR_AXES: ReadonlyArray<{ label: string; sub: string }> = [
@@ -289,6 +311,53 @@ class ReportWriter {
   }
 
   /**
+   * Indikator kategori observasi — merepresentasikan pill "JourneyChip" di
+   * halaman hasil (indikator ↔ PDF selalu selaras karena level datang dari
+   * perhitungan yang sama). Kotak + titik warna + label observasi, tanpa
+   * menyebut skor/level mentah.
+   */
+  indicatorChip(category: RiskLevel, phaseLabel: string): void {
+    const style = CATEGORY_STYLE[category];
+    const height = 28;
+    this.ensure(height + 14);
+    const yMid = this.y - height / 2;
+    this.page.drawRectangle({
+      x: MARGIN_X,
+      y: yMid - height / 2,
+      width: CONTENT_W,
+      height,
+      color: style.bg,
+    });
+    // Lingkaran berwarna besar (mirip emoji 🟢/🟡/🟠) + garis pinggir putih
+    // agar indikator kategori terlihat jelas dan selaras dengan pill halaman hasil.
+    this.page.drawCircle({ x: MARGIN_X + 20, y: yMid, size: 9, color: style.dot });
+    this.page.drawCircle({
+      x: MARGIN_X + 20,
+      y: yMid,
+      size: 9,
+      borderColor: rgb(1, 1, 1),
+      borderWidth: 2,
+    });
+    this.page.drawText(style.label, {
+      x: MARGIN_X + 36,
+      y: yMid - 6,
+      size: 12,
+      font: this.fonts.bold,
+      color: style.text,
+    });
+    const phaseText = `Sampai tahap ${sanitizePdfText(phaseLabel)}`;
+    const pw = this.fonts.bold.widthOfTextAtSize(phaseText, 10);
+    this.page.drawText(phaseText, {
+      x: PAGE_W - MARGIN_X - pw,
+      y: yMid - 5.5,
+      size: 10,
+      font: this.fonts.bold,
+      color: COLOR_MUTED,
+    });
+    this.y -= height + 10;
+  }
+
+  /**
    * Diagram jaring laba-laba (radar) segi enam — nilai 0–100 per sumbu
    * (5 fase + konsistensi). Area diwarnai teal sesuai titik-titik yang
    * terhubung: semakin banyak sumbu yang menjauh dari pusat, semakin luas
@@ -464,16 +533,20 @@ function buildSummary(
   return s;
 }
 
-/** Paragraf pengantar rencana pendampingan — prosa singkat, mengapa bagian ini. */
-function buildPlanIntro(perPhase: PhaseResult[]): string {
+/** Paragraf pengantar rencana pendampingan — prosa singkat, mengapa bagian ini.
+ *  Nada mengikuti level keseluruhan agar tidak bertentangan dengan indikator. */
+function buildPlanIntro(input: ReferralReportInput, perPhase: PhaseResult[]): string {
+  const { assessment } = input;
   const watch = perPhase.filter((p) => p.level !== 'LOW').sort((a, b) => a.phase - b.phase);
 
   let s = '';
   if (watch.length > 0) {
     const areas = watch.map((p) => PHASE_NAME[p.phase].toLowerCase());
     s += `Dari pengamatan sesi ini, bagian yang paling bermanfaat untuk didampingi adalah tahap ${areas.join(' dan ')}. `;
-  } else {
+  } else if (assessment.level === 'LOW') {
     s += 'Dari pengamatan sesi ini, tahap-tahap yang dimainkan tampak berkembang baik untuk usianya. ';
+  } else {
+    s += `Dari pengamatan sesi ini, anak tampak nyaman sampai tahap ${PHASE_NAME[assessment.highestPhaseReached].toLowerCase()} - dan tahap berikutnya layak untuk diamati serta didampingi lebih lanjut. `;
   }
   s += 'Kegiatan berikut aman dan menyenangkan untuk dicoba bersama di rumah - bukan daftar tugas yang harus tuntas, ';
   s += 'melainkan cara sederhana menguatkan kebiasaan membaca lewat bermain. ';
@@ -568,6 +641,10 @@ export async function buildReferralReportPdf(input: ReferralReportInput): Promis
   );
   w.paragraph(PDF_DISCLAIMER, { size: 8.5, color: COLOR_MUTED });
   w.spacing(6);
+
+  // — Indikator kategori observasi (identik dengan pill di halaman hasil) —
+  w.indicatorChip(assessment.level, PHASE_NAME[assessment.highestPhaseReached]);
+  w.spacing(8);
 
   let section = 1;
 
@@ -720,7 +797,7 @@ export async function buildReferralReportPdf(input: ReferralReportInput): Promis
   // 7 — Rencana pendampingan (narasi + poin)
   if (plan) {
     w.heading(`${section}. Rencana Pendampingan`);
-    w.paragraph(buildPlanIntro(perPhase));
+    w.paragraph(buildPlanIntro(input, perPhase));
     if (plan.companionActivities.length > 0) {
       w.spacing(4);
       w.paragraph('Kegiatan yang bisa dicoba bersama anak:', { bold: true });
@@ -732,6 +809,11 @@ export async function buildReferralReportPdf(input: ReferralReportInput): Promis
   // 8 — Saran & tindak lanjut (selalu tampil sebagai bagian tersendiri)
   w.heading(`${section}. Saran & Tindak Lanjut`);
   w.paragraph(buildFollowUpNarrative(input, perPhase));
+  // Poin tindak lanjut IDENTIK dengan kotak "Saran Tindak Lanjut" di halaman
+  // hasil — deterministik dari FOLLOW_UP[assessment.level] (sumber tunggal),
+  // sehingga indikator ↔ saran di PDF selalu selaras dengan layar.
+  w.spacing(4);
+  for (const g of FOLLOW_UP[assessment.level]) w.bullet(g);
   section += 1;
 
   // 9 — Jejak karbon sesi (opsional; bila data tersedia) — di paling bawah

@@ -12,6 +12,8 @@ import BerandaPendamping from "./companion/BerandaPendamping";
 import CompanionDashboard from "./companion/CompanionDashboard";
 import type { ScreeningResult } from "./companion/CompanionDashboard";
 // reportPdf (pdf-lib, ~berat) di-lazy-load di call site onSavePDF.
+// CarbonFootprint di-import statis: modulnya sudah pasti ikut bundle utama via CompanionDashboard.
+import { computeSessionCarbon } from "./companion/CarbonFootprint";
 
 import ChildProfileManager from "./companion/ChildProfileManager";
 import RiwayatLaporan from "./companion/RiwayatLaporan";
@@ -23,14 +25,14 @@ import { getAllScreeningResults, getBerandaData, getLatestScreeningResult, getWe
 import { listChildProfiles } from "./profiles/childProfileService";
 import { warmUpNativeTTS } from "./utils/tts";
 import { savePdf } from "./utils/savePdf";
+import { isNativePlatform } from "./utils/platform";
+import { decodeHash, encodeHash, type NavContext, type ScreenId } from "./utils/nav";
+import type { PluginListenerHandle } from "@capacitor/core";
 
 const LAST_PHASE = WORLDS[WORLDS.length - 1].phase;
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<
-    | "landing" | "consent" | "map" | "world-hub" | "game" | "penutup" | "cilo-menulis"
-    | "dashboard-pendamping" | "beranda-pendamping" | "kelola" | "riwayat" | "tentang"
-  >("landing");
+  const [currentScreen, setCurrentScreen] = useState<ScreenId>("landing");
   const [activeProfile, setActiveProfile] = useState<ChildProfile | null>(null);
 
   // ── Alur petualangan v2: 5 dunia (fase) berurutan; game bebas di dalam dunia ──
@@ -76,6 +78,76 @@ export default function App() {
     void warmUpNativeTTS();
   }, []);
 
+  // ── Sinkronisasi navigasi dengan History API (hash) ──
+  // Semua layar di-render dari state, sehingga tombol kembali sistem tidak punya
+  // riwayat. Hash URL memberi jejak itu: back/forward sistem → hashchange → state.
+  const applyCtx = (ctx: NavContext) => {
+    setCurrentScreen(ctx.screen);
+    setActivePhase(ctx.phase);
+    setActiveSkill(ctx.skill);
+    setViewingSessionId(ctx.viewingSessionId);
+  };
+
+  /** Navigasi maju — dorong entri riwayat baru. */
+  const navigate = (ctx: NavContext) => {
+    applyCtx(ctx);
+    window.location.hash = encodeHash(ctx);
+  };
+
+  /** Ganti entri teratas — untuk langkah linier yang tidak boleh di-back. */
+  const replaceNav = (ctx: NavContext) => {
+    applyCtx(ctx);
+    window.history.replaceState(null, "", encodeHash(ctx));
+  };
+
+  /** Kembali satu langkah (dipakai tombol kembali dalam-app maupun sistem). */
+  const goBack = () => {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      applyCtx({ screen: "landing", phase: null, skill: null, viewingSessionId: null });
+    }
+  };
+
+  useEffect(() => {
+    const applyFromHash = () => {
+      const ctx = decodeHash(window.location.hash);
+      if (ctx) applyCtx(ctx);
+    };
+    window.addEventListener("hashchange", applyFromHash);
+    // Setelah reload: buang hash lama agar selalu mulai bersih dari landing.
+    const initial = decodeHash(window.location.hash);
+    if (initial && initial.screen !== "landing") {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
+    return () => window.removeEventListener("hashchange", applyFromHash);
+  }, []);
+
+  // Tombol kembali Android (swipe / bar bawah) di dalam APK: ikuti riwayat
+  // WebView; di akar (tidak bisa mundur) → keluar dari aplikasi.
+  useEffect(() => {
+    if (!isNativePlatform()) return;
+    let disposed = false;
+    let handle: PluginListenerHandle | null = null;
+    void import("@capacitor/app").then(({ App }) => {
+      if (disposed) return;
+      void App.addListener("backButton", ({ canGoBack }) => {
+        if (canGoBack) {
+          window.history.back();
+        } else {
+          void App.exitApp();
+        }
+      }).then((h) => {
+        if (disposed) void h.remove();
+        else handle = h;
+      });
+    });
+    return () => {
+      disposed = true;
+      void handle?.remove();
+    };
+  }, []);
+
   const refreshProfiles = async (): Promise<ChildProfile[]> => {
     const ps = await listChildProfiles();
     setAllProfiles(ps);
@@ -98,9 +170,9 @@ export default function App() {
     const profiles = await refreshProfiles();
     if (profiles.length > 0) {
       setActiveProfile((cur) => cur ?? profiles[0]);
-      setCurrentScreen("beranda-pendamping");
+      navigate({ screen: "beranda-pendamping", phase: null, skill: null, viewingSessionId: null });
     } else {
-      setCurrentScreen("consent");
+      navigate({ screen: "consent", phase: null, skill: null, viewingSessionId: null });
     }
   };
 
@@ -109,21 +181,19 @@ export default function App() {
     setAllProfiles((prev) => [...prev, profile]);
     setRefreshKey((k) => k + 1);
     beginNewRun();
-    setCurrentScreen("map");
+    replaceNav({ screen: "map", phase: null, skill: null, viewingSessionId: null });
   };
 
   // ── Navigasi petualangan ──
   const enterWorld = (phase: PhaseId) => {
-    setActivePhase(phase);
-    setCurrentScreen("world-hub");
+    navigate({ screen: "world-hub", phase, skill: null, viewingSessionId: null });
   };
 
   const selectGame = (skillId: SkillId) => {
     // Game yang sudah selesai TIDAK boleh diulang dalam satu sesi
     // (mencegah trial duplikat yang mencemari hasil skrining).
     if (completedSkills.has(skillId)) return;
-    setActiveSkill(skillId);
-    setCurrentScreen("game");
+    navigate({ screen: "game", phase: activePhase, skill: skillId, viewingSessionId: null });
   };
 
   const handleGameComplete = (trials: TrialRecord[]) => {
@@ -131,8 +201,7 @@ export default function App() {
     if (activeSkill) {
       setCompletedSkills((prev) => new Set(prev).add(activeSkill));
     }
-    setActiveSkill(null);
-    setCurrentScreen("world-hub");
+    replaceNav({ screen: "world-hub", phase: activePhase, skill: null, viewingSessionId: null });
   };
 
   const finishWorld = () => {
@@ -140,9 +209,9 @@ export default function App() {
     // Buka dunia berikutnya.
     setCurrentWorldIndex((i) => Math.max(i, activePhase + 1));
     if (activePhase >= LAST_PHASE) {
-      setCurrentScreen("penutup"); // semua dunia selesai → selebrasi lalu hasil
+      replaceNav({ screen: "penutup", phase: null, skill: null, viewingSessionId: null }); // semua dunia selesai → selebrasi lalu hasil
     } else {
-      setCurrentScreen("map");
+      replaceNav({ screen: "map", phase: null, skill: null, viewingSessionId: null });
     }
   };
 
@@ -151,16 +220,16 @@ export default function App() {
   return (
     <>
       {currentScreen === "landing" && (
-        <LandingPage onStart={handleStartFromLanding} />
+        <LandingPage
+          onStart={handleStartFromLanding}
+          hasExistingData={allProfiles.length > 0}
+        />
       )}
 
       {currentScreen === "consent" && (
         <ParentConsentCilo
           onCreated={handleProfileCreated}
-          onCancel={() => {
-            if (allProfiles.length > 0) setCurrentScreen("beranda-pendamping");
-            else setCurrentScreen("landing");
-          }}
+          onCancel={() => goBack()}
         />
       )}
 
@@ -168,7 +237,7 @@ export default function App() {
         <WorldMap
           currentWorldIndex={currentWorldIndex}
           onEnterWorld={enterWorld}
-          onBackToDashboard={() => setCurrentScreen("beranda-pendamping")}
+          onBackToDashboard={() => goBack()}
         />
       )}
 
@@ -178,7 +247,7 @@ export default function App() {
           completedSkills={completedSkills}
           onSelectGame={selectGame}
           onFinishWorld={finishWorld}
-          onBack={() => setCurrentScreen("map")}
+          onBack={() => goBack()}
         />
       )}
 
@@ -187,12 +256,14 @@ export default function App() {
           skillId={activeSkill}
           accent={activeAccent}
           onComplete={handleGameComplete}
-          onBack={() => setCurrentScreen("world-hub")}
+          onBack={() => goBack()}
         />
       )}
 
       {currentScreen === "penutup" && (
-        <PuncakBintang onOpenStory={() => setCurrentScreen("cilo-menulis")} />
+        <PuncakBintang
+          onOpenStory={() => replaceNav({ screen: "cilo-menulis", phase: null, skill: null, viewingSessionId: null })}
+        />
       )}
 
       {currentScreen === "cilo-menulis" && (
@@ -210,7 +281,7 @@ export default function App() {
             setLatestResult(result);
             setRunStartedAt(null);
           }}
-          onDone={() => setCurrentScreen("dashboard-pendamping")}
+          onDone={() => replaceNav({ screen: "dashboard-pendamping", phase: null, skill: null, viewingSessionId: null })}
         />
       )}
 
@@ -228,14 +299,16 @@ export default function App() {
             return getLatestScreeningResult(profileId);
           }}
           onStartNext={() => {
-            if (viewingSessionId) setCurrentScreen("riwayat");
-            else setCurrentScreen("beranda-pendamping");
-            setViewingSessionId(null);
+            if (viewingSessionId) {
+              setViewingSessionId(null);
+              goBack();
+            } else {
+              navigate({ screen: "beranda-pendamping", phase: null, skill: null, viewingSessionId: null });
+            }
           }}
           nextButtonText={viewingSessionId ? "← Kembali ke Riwayat" : undefined}
           onSavePDF={async (result) => {
             try {
-              const { computeSessionCarbon } = await import("./companion/CarbonFootprint");
               const carbon = await computeSessionCarbon(result);
               const { buildReferralReportPdf } = await import("./referral/reportPdf");
               const pdfBytes = await buildReferralReportPdf({
@@ -288,27 +361,26 @@ export default function App() {
           }}
           onStartAdventure={(override) => {
             beginNewRun(override?.reason ?? null);
-            setCurrentScreen("map");
+            navigate({ screen: "map", phase: null, skill: null, viewingSessionId: null });
           }}
           onOpenLatestStory={() => {
             setViewingSessionId(null);
-            setCurrentScreen("dashboard-pendamping");
+            navigate({ screen: "dashboard-pendamping", phase: null, skill: null, viewingSessionId: null });
           }}
-          onOpenHistory={() => setCurrentScreen("riwayat")}
-          onOpenManage={() => setCurrentScreen("kelola")}
-          onOpenTentang={() => setCurrentScreen("tentang")}
-          onAddChild={() => setCurrentScreen("consent")}
-          onToLanding={() => setCurrentScreen("landing")}
+          onOpenHistory={() => navigate({ screen: "riwayat", phase: null, skill: null, viewingSessionId: null })}
+          onOpenManage={() => navigate({ screen: "kelola", phase: null, skill: null, viewingSessionId: null })}
+          onOpenTentang={() => navigate({ screen: "tentang", phase: null, skill: null, viewingSessionId: null })}
+          onAddChild={() => navigate({ screen: "consent", phase: null, skill: null, viewingSessionId: null })}
+          onToLanding={() => navigate({ screen: "landing", phase: null, skill: null, viewingSessionId: null })}
         />
       )}
 
       {currentScreen === "riwayat" && activeProfile && (
         <RiwayatLaporan
           activeProfile={activeProfile}
-          onBack={() => setCurrentScreen("beranda-pendamping")}
+          onBack={() => goBack()}
           onOpenResult={(sessionId) => {
-            setViewingSessionId(sessionId);
-            setCurrentScreen("dashboard-pendamping");
+            navigate({ screen: "dashboard-pendamping", phase: null, skill: null, viewingSessionId: sessionId });
           }}
         />
       )}
@@ -324,7 +396,7 @@ export default function App() {
               setLatestResult(null);
             }
           }}
-          onAddChild={() => setCurrentScreen("consent")}
+          onAddChild={() => navigate({ screen: "consent", phase: null, skill: null, viewingSessionId: null })}
           onProfileDeleted={() => {
             void refreshProfiles().then((profiles) => {
               setActiveProfile((prevActive) => {
@@ -334,12 +406,12 @@ export default function App() {
               });
             });
           }}
-          onBack={() => setCurrentScreen("beranda-pendamping")}
+          onBack={() => goBack()}
         />
       )}
 
       {currentScreen === "tentang" && (
-        <TentangPrivasi onBack={() => setCurrentScreen("beranda-pendamping")} />
+        <TentangPrivasi onBack={() => goBack()} />
       )}
 
     </>

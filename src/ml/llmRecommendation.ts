@@ -10,8 +10,18 @@
  *
  * Arsitektur v2 (membaca): input = profil 5 fase; output = rencana
  * pendampingan berbahasa observasi yang HALUS (bukan diagnosis).
+ *
+ * KONSISTENSI: narasi (summary + metricExplanations + referralGuidance)
+ * selalu deterministik dari hasil perhitungan — Gemini hanya memperkaya
+ * kegiatan rumah, sehingga indikator ↔ kata-kata ↔ saran tidak pernah
+ * bertentangan.
  */
-import { generateLocalCompanionPlan, SCREENING_DISCLAIMER } from '../utils/fallbackTemplates';
+import {
+  buildDeterministicNarrative,
+  FOLLOW_UP,
+  generateLocalCompanionPlan,
+  SCREENING_DISCLAIMER,
+} from '../utils/fallbackTemplates';
 import type {
   ChildProfileForPlan,
   CompanionPlanResult,
@@ -119,6 +129,13 @@ export function parseGeminiPlan(text: string): GeminiPlanPayload {
  * Titik masuk utama pembuatan Rencana Pendampingan. Selalu berhasil
  * mengembalikan CompanionPlanResult (demo-safe): kegagalan apa pun jatuh ke
  * template lokal. PRIVASI: hanya profil fase agregat yang dikirim ke proxy.
+ *
+ * Konsistensi indikator ↔ narasi: summary, metricExplanations, dan
+ * referralGuidance SELALU deterministik dari hasil perhitungan (level &
+ * profil fase). Gemini HANYA memperkaya kegiatan rumah (companionActivities);
+ * bila kosong, dipakai kegiatan template lokal. Ini menjamin indikator,
+ * kata-kata, dan saran tidak pernah bertentangan — mis. level LOW tapi
+ * narasi menyuruh didampingi intensif, atau sebaliknya.
  */
 export async function generateCompanionPlan(
   profile: ChildProfileForPlan,
@@ -139,14 +156,24 @@ export async function generateCompanionPlan(
       throw new Error('Struktur JSON rencana dari proxy tidak sesuai skema');
     }
 
+    // Narasi (summary + metricExplanations) SELALU deterministik dari level &
+    // profil fase hasil perhitungan — tidak pernah dipercayakan ke LLM, agar
+    // indikator ↔ kata-kata tidak pernah bertentangan. Gemini hanya memperkaya
+    // kegiatan rumah; bila kosong → fallback kegiatan template lokal.
+    const narrative = buildDeterministicNarrative(profile);
+    const fallback = generateLocalCompanionPlan(profile);
+    const llmActivities = (payload.companionActivities ?? []).filter(
+      (x): x is string => typeof x === 'string' && x.trim().length > 0,
+    );
+
     const usage = payload.aiUsage;
     return {
       source: 'gemini',
       generatedAt: Date.now(),
-      summary: payload.summary,
-      companionActivities: payload.companionActivities,
-      referralGuidance: payload.referralGuidance,
-      metricExplanations: payload.metricExplanations,
+      summary: narrative.summary,
+      companionActivities: llmActivities.length > 0 ? llmActivities : fallback.companionActivities,
+      referralGuidance: FOLLOW_UP[profile.assessment.level],
+      metricExplanations: narrative.metricExplanations,
       disclaimer: SCREENING_DISCLAIMER,
       ...(usage && usage.promptTokens != null
         ? { aiUsage: { promptTokens: usage.promptTokens, outputTokens: usage.outputTokens ?? 0 } }

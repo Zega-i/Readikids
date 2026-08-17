@@ -67,11 +67,24 @@ const PHASE_EMOJI: Record<number, string> = { 0: "🧭", 1: "🔤", 2: "🔊", 3
 const SAFETY_DISCLAIMER =
   "ReadiKids adalah alat bantu skrining awal, BUKAN alat diagnosis. Hasil ini adalah pengamatan cara anak bermain — kepastian hanya bisa diberikan oleh profesional.";
 
-/** Kalimat kepala yang lembut (bukan vonis level). */
+/**
+ * Kalimat kepala yang lembut (bukan vonis level).
+ * Nada SELALU mengikuti level keseluruhan agar selaras dengan indikator yang
+ * tampil (chip JourneyChip) — bukan hanya mengikuti fase non-LOW pertama,
+ * supaya tidak ada momen "indikator MEDIUM/HIGH tapi headline berkembang baik"
+ * atau "indikator LOW tapi headline menyuruh didampingi".
+ */
 function softHeadline(a: AssessmentView): string {
   const watch = [...a.perPhase].sort((x, y) => x.phase - y.phase).find((p) => p.level !== "LOW");
-  if (!watch) return "Tampak berkembang baik di tahap-tahap yang dimainkan.";
-  return `Paling terbantu bila sesekali didampingi saat ${PHASE_NAME[watch.phase].toLowerCase()}.`;
+  if (a.level === "LOW") return "Tampak berkembang baik di tahap-tahap yang dimainkan.";
+  if (a.level === "MEDIUM") {
+    return watch
+      ? `Paling terbantu bila sesekali didampingi saat ${PHASE_NAME[watch.phase].toLowerCase()}.`
+      : "Ada tahap yang tampak sebaiknya diamati lebih lanjut.";
+  }
+  return watch
+    ? `Beberapa tahap masih memerlukan dukungan lebih, terutama saat ${PHASE_NAME[watch.phase].toLowerCase()}.`
+    : "Beberapa tahap masih tampak memerlukan dukungan lebih saat didampingi.";
 }
 
 const BULAN = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
@@ -156,7 +169,10 @@ export default function CompanionDashboard({
 
   const { assessment, plan } = result;
   const headline = softHeadline(assessment);
-  const showReferral = assessment.level !== "LOW" && plan.referralGuidance.length > 0;
+  // Saran & tindak lanjut TAMPIL untuk SEMUA level (termasuk LOW) agar selaras
+  // dengan bagian "Saran & Tindak Lanjut" di PDF. Isi selalu deterministik dari
+  // plan.referralGuidance (= FOLLOW_UP[level]) — untuk LOW bernada ringan.
+  const showReferral = plan.referralGuidance.length > 0;
 
   return (
     <Shell
@@ -171,7 +187,7 @@ export default function CompanionDashboard({
           {/* Ringkasan: posisi perjalanan + cerita Cilo + pengamatan per tahap */}
           <div className="bg-white rounded-3xl rk-sticker p-5">
             <div className="flex items-center justify-between gap-2">
-              <JourneyChip phase={assessment.highestPhaseReached} />
+              <JourneyChip phase={assessment.highestPhaseReached} level={assessment.level} />
               {plan.source === "local-template" && (
                 <span className="font-bold text-[#a98f6f] text-[11px] shrink-0">Laporan standar</span>
               )}
@@ -277,7 +293,7 @@ export default function CompanionDashboard({
         {/* ══ KOLOM KIRI — HASIL UTAMA ══ */}
         <div className="bg-white rounded-3xl shadow-[0px_8px_24px_rgba(74,55,40,0.08)] p-5 lg:p-7 flex flex-col">
           <div className="flex items-center justify-between">
-            <JourneyChip phase={assessment.highestPhaseReached} />
+            <JourneyChip phase={assessment.highestPhaseReached} level={assessment.level} />
             {plan.source === "local-template" && (
               <span className="font-bold text-[#a98f6f] text-xs">Laporan standar (offline)</span>
             )}
@@ -373,15 +389,29 @@ export default function CompanionDashboard({
   );
 }
 
-// ── Chip posisi perjalanan (warna hangat konsisten, BUKAN indikator risiko) ──
-const JourneyChip = ({ phase }: { phase: number }) => (
-  <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5" style={{ background: "#eaf7e0" }}>
-    <span className="w-2.5 h-2.5 rounded-full" style={{ background: "#6dbb57" }} />
-    <span className="font-black text-sm" style={{ color: "#2f5b23" }}>
-      Sampai tahap {PHASE_NAME[phase]}
-    </span>
-  </div>
-);
+// ── Chip posisi perjalanan + kategori observasi (E2 validasi ahli) ──
+const CATEGORY_STYLE: Record<RiskLevel, { bg: string; dot: string; text: string; label: string }> = {
+  LOW:    { bg: "#eaf7e0", dot: "#6dbb57", text: "#2f5b23", label: "Berkembang Baik" },
+  MEDIUM: { bg: "#fef6e0", dot: "#e0993a", text: "#6b5215", label: "Perlu Diamati" },
+  HIGH:   { bg: "#fdece9", dot: "#d96b5a", text: "#6b2a1f", label: "Perlu Didampingi Lebih" },
+};
+
+const JourneyChip = ({ phase, level }: { phase: number; level: RiskLevel }) => {
+  const cat = CATEGORY_STYLE[level];
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5" style={{ background: cat.bg }}>
+        <span className="w-2.5 h-2.5 rounded-full" style={{ background: cat.dot }} />
+        <span className="font-black text-sm" style={{ color: cat.text }}>
+          {cat.label}
+        </span>
+      </div>
+      <span className="font-bold text-[#a98f6f] text-[11px]">
+        Sampai tahap {PHASE_NAME[phase]}
+      </span>
+    </div>
+  );
+};
 
 // ── Panah buka/tutup seragam (mengikuti Misi Rumah: panah bawah → atas) ──
 const Chevron = ({ open }: { open: boolean }) => (
