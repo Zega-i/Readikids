@@ -1,9 +1,9 @@
 /**
  * DataWarningModal — Pop-out peringatan penyimpanan data lokal.
  *
- * Ditampilkan sekali saja saat pengguna pertama kali menekan "MULAI PETUALANGAN"
- * dan belum ada data anak di perangkat. Setelah ditutup (tombol "Saya Mengerti"),
- * flag disimpan di localStorage agar tidak muncul lagi.
+ * Muncul setiap kali belum ada profil anak tersimpan di perangkat. Setelah
+ * profil pertama tersimpan, komponen panggil (LandingPage) berhenti membuka
+ * modal ini lewat prop `hasExistingData`. Modal ini presentasional murni.
  */
 
 interface DataWarningModalProps {
@@ -11,33 +11,8 @@ interface DataWarningModalProps {
   onAccept: () => void;
 }
 
-const STORAGE_KEY = 'readikids_data_warning_seen';
-
-/** Cek apakah peringatan sudah pernah ditampilkan di perangkat ini. */
-export function hasSeenDataWarning(): boolean {
-  try {
-    return localStorage.getItem(STORAGE_KEY) === '1';
-  } catch {
-    return false;
-  }
-}
-
-/** Tandai peringatan sudah dilihat. */
-export function markDataWarningSeen(): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, '1');
-  } catch {
-    // silently ignore — worst case modal muncul lagi
-  }
-}
-
 export default function DataWarningModal({ open, onAccept }: DataWarningModalProps): JSX.Element | null {
   if (!open) return null;
-
-  const handleAccept = () => {
-    markDataWarningSeen();
-    onAccept();
-  };
 
   return (
     <>
@@ -98,7 +73,7 @@ export default function DataWarningModal({ open, onAccept }: DataWarningModalPro
         {/* Tombol */}
         <button
           type="button"
-          onClick={handleAccept}
+          onClick={onAccept}
           className="w-full py-3.5 rounded-[14px] bg-[#4a903c] text-white font-black text-[15px] tracking-wide transition-transform active:scale-95 shadow-md"
         >
           Saya Mengerti

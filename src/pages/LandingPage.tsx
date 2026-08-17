@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { CiloKancil } from "../components/CiloKancil";
 import InstallModal from "../components/InstallModal";
-import DataWarningModal, { hasSeenDataWarning } from "../components/DataWarningModal";
+import DataWarningModal from "../components/DataWarningModal";
 
 // Kartu langkah (versi web / desktop)
 const stepsCilo = [
@@ -41,10 +41,10 @@ export default function LandingPage({ onStart, hasExistingData = false }: Landin
   const [showDataWarning, setShowDataWarning] = useState(false);
 
   const handleStartAdventure = () => {
-    // Pop-out hanya muncul jika:
-    // 1. Belum ada data anak (first-time user)
-    // 2. Peringatan belum pernah dilihat di perangkat ini
-    if (!hasExistingData && !hasSeenDataWarning()) {
+    // Pop-out selalu muncul selama belum ada profil anak tersimpan di perangkat.
+    // Begitu profil pertama tersimpan (hasExistingData → true), pop-out tidak
+    // akan muncul lagi secara alami.
+    if (!hasExistingData) {
       setShowDataWarning(true);
       return;
     }
@@ -232,7 +232,7 @@ export default function LandingPage({ onStart, hasExistingData = false }: Landin
       {/* W0b · Modal Pasang Aplikasi (web saja) */}
       <InstallModal open={showInstallModal} onClose={() => setShowInstallModal(false)} />
 
-      {/* Pop-out peringatan data lokal — hanya muncul sekali, first-time user */}
+      {/* Pop-out peringatan data lokal — muncul selama belum ada profil tersimpan */}
       <DataWarningModal open={showDataWarning} onAccept={handleWarningAccepted} />
     </main>
   );

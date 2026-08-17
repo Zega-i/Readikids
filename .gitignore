@@ -3,6 +3,11 @@ dist
 build.log
 vite.config.ts.timestamp-*
 *.tmp
+
+# Crash dump JVM (hs_err_pid*, replay_pid*) — artefak crash Gradle/Android Studio
+hs_err_pid*.log
+replay_pid*.log
+
 .env
 .env.local
 *.local
